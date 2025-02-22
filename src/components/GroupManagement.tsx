@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { Button } from "./ui/button";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, ShoppingCart } from "lucide-react";
 import { useToast } from "./ui/use-toast";
 
 const GroupManagement = () => {
@@ -20,17 +20,10 @@ const GroupManagement = () => {
   };
 
   const deleteGroup = (group: string) => {
-    if (group !== "Mercado" && group !== "Presentes" && group !== "Outros") {
-      setGroups(groups.filter(g => g !== group));
-      toast({
-        description: "Grupo removido com sucesso!",
-      });
-    } else {
-      toast({
-        description: "Grupos padrão não podem ser removidos",
-        variant: "destructive"
-      });
-    }
+    setGroups(groups.filter(g => g !== group));
+    toast({
+      description: "Grupo removido com sucesso!",
+    });
   };
 
   return (
@@ -64,7 +57,6 @@ const GroupManagement = () => {
               variant="ghost"
               size="icon"
               className="rounded-full opacity-50 hover:opacity-100"
-              disabled={["Mercado", "Presentes", "Outros"].includes(group)}
             >
               <Trash2 className="h-4 w-4" />
             </Button>

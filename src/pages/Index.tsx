@@ -1,16 +1,12 @@
-
 import React, { useState } from "react";
 import { useToast } from "@/components/ui/use-toast";
 import { Button } from "@/components/ui/button";
-import { Menu } from "lucide-react";
+import { Menu, ShoppingCart } from "lucide-react";
 import ShoppingListHeader from "@/components/ShoppingListHeader";
 import ShoppingListItem, { ShoppingItem, ItemCategory } from "@/components/ShoppingListItem";
 import AddItemDialog from "@/components/AddItemDialog";
 import { SidebarProvider, Sidebar, SidebarTrigger, SidebarContent, SidebarGroup, SidebarGroupContent } from "@/components/ui/sidebar";
 import GroupManagement from "@/components/GroupManagement";
-
-// Imagem atualizada de um casal com Spitz Alemão
-const familyLogoUrl = "https://img.freepik.com/free-vector/happy-young-couple-walking-with-dog_74855-5233.jpg";
 
 const Index = () => {
   const [items, setItems] = useState<ShoppingItem[]>([]);
@@ -67,7 +63,7 @@ const Index = () => {
 
   return (
     <SidebarProvider>
-      <div className="min-h-screen flex w-full bg-gray-50">
+      <div className="min-h-screen flex w-full bg-gradient-to-br from-blue-50 to-purple-50">
         <Sidebar className="border-r border-gray-200">
           <SidebarContent>
             <SidebarGroup>
@@ -90,32 +86,30 @@ const Index = () => {
               </div>
 
               <div className="flex flex-col items-center mb-8">
-                <img 
-                  src={familyLogoUrl} 
-                  alt="Family Logo" 
-                  className="w-32 h-32 object-cover rounded-2xl shadow-sm mb-4"
-                />
+                <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mb-4">
+                  <ShoppingCart className="h-8 w-8 text-purple-600" />
+                </div>
                 <h1 className="text-2xl font-semibold mb-6 text-gray-800">Lista de Compras da Família</h1>
                 
                 <div className="flex gap-2 mb-4">
                   <Button
                     variant={selectedCategory === "groceries" ? "default" : "outline"}
                     onClick={() => setSelectedCategory("groceries")}
-                    className="rounded-full shadow-sm"
+                    className="rounded-full shadow-sm bg-purple-600 hover:bg-purple-700 text-white"
                   >
                     Mercado
                   </Button>
                   <Button
                     variant={selectedCategory === "presents" ? "default" : "outline"}
                     onClick={() => setSelectedCategory("presents")}
-                    className="rounded-full shadow-sm"
+                    className="rounded-full shadow-sm bg-pink-500 hover:bg-pink-600 text-white"
                   >
                     Presentes
                   </Button>
                   <Button
                     variant={selectedCategory === "other" ? "default" : "outline"}
                     onClick={() => setSelectedCategory("other")}
-                    className="rounded-full shadow-sm"
+                    className="rounded-full shadow-sm bg-blue-500 hover:bg-blue-600 text-white"
                   >
                     Outros
                   </Button>
