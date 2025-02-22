@@ -1,6 +1,7 @@
 
 import React, { useState } from "react";
 import { useToast } from "@/components/ui/use-toast";
+import { Button } from "@/components/ui/button";
 import ShoppingListHeader from "@/components/ShoppingListHeader";
 import ShoppingListItem, { ShoppingItem, ItemCategory } from "@/components/ShoppingListItem";
 import AddItemDialog from "@/components/AddItemDialog";
