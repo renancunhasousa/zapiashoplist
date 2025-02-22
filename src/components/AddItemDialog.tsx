@@ -1,8 +1,15 @@
 
-import React from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "./ui/dialog";
-import { Button } from "./ui/button";
-import { Input } from "./ui/input";
+import React, { useState } from "react";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { ItemCategory } from "./ShoppingListItem";
 
 interface AddItemDialogProps {
   open: boolean;
@@ -11,36 +18,36 @@ interface AddItemDialogProps {
 }
 
 const AddItemDialog = ({ open, onOpenChange, onAdd }: AddItemDialogProps) => {
-  const [itemName, setItemName] = React.useState("");
+  const [itemName, setItemName] = useState("");
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (itemName.trim()) {
       onAdd(itemName.trim());
       setItemName("");
-      onOpenChange(false);
     }
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent>
         <DialogHeader>
-          <DialogTitle>Adicionar Item</DialogTitle>
+          <DialogTitle>Adicionar Novo Item</DialogTitle>
         </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4 mt-4">
-          <Input
-            placeholder="Nome do item"
-            value={itemName}
-            onChange={(e) => setItemName(e.target.value)}
-            autoFocus
-          />
-          <div className="flex justify-end gap-2">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              Cancelar
-            </Button>
-            <Button type="submit">Adicionar</Button>
+        <form onSubmit={handleSubmit}>
+          <div className="space-y-4">
+            <Input
+              placeholder="Nome do item"
+              value={itemName}
+              onChange={(e) => setItemName(e.target.value)}
+              autoFocus
+            />
           </div>
+          <DialogFooter className="mt-4">
+            <Button type="submit" disabled={!itemName.trim()}>
+              Adicionar
+            </Button>
+          </DialogFooter>
         </form>
       </DialogContent>
     </Dialog>

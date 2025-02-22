@@ -4,10 +4,13 @@ import { Checkbox } from "./ui/checkbox";
 import { Button } from "./ui/button";
 import { X } from "lucide-react";
 
+export type ItemCategory = "groceries" | "presents" | "other";
+
 export interface ShoppingItem {
   id: string;
   name: string;
   checked: boolean;
+  category: ItemCategory;
 }
 
 interface ShoppingListItemProps {
@@ -25,9 +28,12 @@ const ShoppingListItem = ({ item, onToggle, onDelete }: ShoppingListItemProps) =
           onCheckedChange={() => onToggle(item.id)}
           className="h-5 w-5"
         />
-        <span className={`text-lg ${item.checked ? "line-through text-gray-400" : ""}`}>
-          {item.name}
-        </span>
+        <div className="flex flex-col">
+          <span className={`text-lg ${item.checked ? "line-through text-gray-400" : ""}`}>
+            {item.name}
+          </span>
+          <span className="text-xs text-gray-500 capitalize">{item.category}</span>
+        </div>
       </div>
       <Button variant="ghost" size="icon" onClick={() => onDelete(item.id)}>
         <X className="h-4 w-4" />
