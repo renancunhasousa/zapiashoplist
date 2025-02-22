@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { useToast } from "@/components/ui/use-toast";
 import { Button } from "@/components/ui/button";
@@ -12,6 +13,7 @@ const Index = () => {
   const [items, setItems] = useState<ShoppingItem[]>([]);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<ItemCategory>("groceries");
+  const [groups, setGroups] = useState<string[]>(["Mercado", "Presentes", "Outros"]);
   const { toast } = useToast();
 
   const addItem = (name: string) => {
@@ -33,7 +35,6 @@ const Index = () => {
         item.id === id ? { ...item, checked: !item.checked } : item
       );
       
-      // Sort items: unchecked first, then checked
       return updatedItems.sort((a, b) => {
         if (a.checked === b.checked) return 0;
         return a.checked ? 1 : -1;
@@ -68,7 +69,7 @@ const Index = () => {
           <SidebarContent>
             <SidebarGroup>
               <SidebarGroupContent>
-                <GroupManagement />
+                <GroupManagement groups={groups} setGroups={setGroups} />
               </SidebarGroupContent>
             </SidebarGroup>
           </SidebarContent>
@@ -89,30 +90,22 @@ const Index = () => {
                 <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mb-4">
                   <ShoppingCart className="h-8 w-8 text-purple-600" />
                 </div>
-                <h1 className="text-2xl font-semibold mb-6 text-gray-800">Lista de Compras da Família</h1>
                 
                 <div className="flex gap-2 mb-4">
-                  <Button
-                    variant={selectedCategory === "groceries" ? "default" : "outline"}
-                    onClick={() => setSelectedCategory("groceries")}
-                    className="rounded-full shadow-sm bg-purple-600 hover:bg-purple-700 text-white"
-                  >
-                    Mercado
-                  </Button>
-                  <Button
-                    variant={selectedCategory === "presents" ? "default" : "outline"}
-                    onClick={() => setSelectedCategory("presents")}
-                    className="rounded-full shadow-sm bg-pink-500 hover:bg-pink-600 text-white"
-                  >
-                    Presentes
-                  </Button>
-                  <Button
-                    variant={selectedCategory === "other" ? "default" : "outline"}
-                    onClick={() => setSelectedCategory("other")}
-                    className="rounded-full shadow-sm bg-blue-500 hover:bg-blue-600 text-white"
-                  >
-                    Outros
-                  </Button>
+                  {groups.map((group) => (
+                    <Button
+                      key={group}
+                      variant={selectedCategory === (group === "Mercado" ? "groceries" : group === "Presentes" ? "presents" : "other") ? "default" : "outline"}
+                      onClick={() => setSelectedCategory(group === "Mercado" ? "groceries" : group === "Presentes" ? "presents" : "other")}
+                      className={`rounded-full shadow-sm ${
+                        group === "Mercado" ? "bg-purple-600 hover:bg-purple-700" :
+                        group === "Presentes" ? "bg-pink-500 hover:bg-pink-600" :
+                        "bg-blue-500 hover:bg-blue-600"
+                      } text-white`}
+                    >
+                      {group}
+                    </Button>
+                  ))}
                 </div>
               </div>
 
@@ -121,7 +114,7 @@ const Index = () => {
                 onReset={resetList} 
               />
               
-              <div className="space-y-3 mt-8">
+              <div className="space-y-2 mt-8">
                 {items.length === 0 ? (
                   <p className="text-center text-gray-500">
                     Sua lista está vazia. Adicione alguns itens!

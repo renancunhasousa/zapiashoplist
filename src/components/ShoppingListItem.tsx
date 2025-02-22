@@ -21,27 +21,27 @@ interface ShoppingListItemProps {
 
 const ShoppingListItem = ({ item, onToggle, onDelete }: ShoppingListItemProps) => {
   return (
-    <div className="flex items-center justify-between p-4 bg-white rounded-2xl shadow-sm border border-gray-100 hover:border-gray-200 transition-colors">
+    <div className="flex items-center justify-between p-3 bg-white rounded-2xl shadow-sm border border-gray-100 hover:border-gray-200 transition-colors">
       <div className="flex items-center gap-3">
         <Checkbox
           checked={item.checked}
           onCheckedChange={() => onToggle(item.id)}
-          className="h-5 w-5 rounded-full"
+          className="h-4 w-4 rounded-full"
         />
-        <div className="flex flex-col">
-          <span className={`text-lg ${item.checked ? "line-through text-gray-400" : "text-gray-800"}`}>
+        <div className="flex flex-col gap-0.5">
+          <span className={`text-base ${item.checked ? "line-through text-gray-400" : "text-gray-800"}`}>
             {item.name}
           </span>
-          <span className="text-xs text-gray-500 capitalize">{item.category}</span>
+          <span className="text-[10px] text-gray-500 capitalize">{item.category}</span>
         </div>
       </div>
       <Button 
         variant="ghost" 
         size="icon" 
         onClick={() => onDelete(item.id)}
-        className="rounded-full hover:bg-gray-100"
+        className="rounded-full hover:bg-gray-100 h-8 w-8"
       >
-        <X className="h-4 w-4" />
+        <X className="h-3 w-3" />
       </Button>
     </div>
   );

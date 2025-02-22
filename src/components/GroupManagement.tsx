@@ -1,12 +1,16 @@
 
 import React, { useState } from 'react';
 import { Button } from "./ui/button";
-import { Plus, Trash2, ShoppingCart } from "lucide-react";
+import { Plus, Trash2 } from "lucide-react";
 import { useToast } from "./ui/use-toast";
 
-const GroupManagement = () => {
+interface GroupManagementProps {
+  groups: string[];
+  setGroups: React.Dispatch<React.SetStateAction<string[]>>;
+}
+
+const GroupManagement = ({ groups, setGroups }: GroupManagementProps) => {
   const { toast } = useToast();
-  const [groups, setGroups] = useState<string[]>(["Mercado", "Presentes", "Outros"]);
   const [newGroup, setNewGroup] = useState("");
 
   const addGroup = () => {
