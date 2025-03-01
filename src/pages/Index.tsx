@@ -8,6 +8,21 @@ import ShoppingListItem, { ShoppingItem, ItemCategory } from "@/components/Shopp
 import AddItemDialog from "@/components/AddItemDialog";
 import { SidebarProvider, Sidebar, SidebarTrigger, SidebarContent, SidebarGroup, SidebarGroupContent } from "@/components/ui/sidebar";
 import GroupManagement from "@/components/GroupManagement";
+import { 
+  DndContext, 
+  closestCenter, 
+  KeyboardSensor, 
+  PointerSensor, 
+  useSensor, 
+  useSensors,
+  DragEndEvent 
+} from "@dnd-kit/core";
+import { 
+  arrayMove,
+  SortableContext, 
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy 
+} from "@dnd-kit/sortable";
 
 const Index = () => {
   const [items, setItems] = useState<ShoppingItem[]>([]);
@@ -15,6 +30,18 @@ const Index = () => {
   const [selectedCategory, setSelectedCategory] = useState<ItemCategory>("groceries");
   const [groups, setGroups] = useState<string[]>(["Mercado", "Presentes", "Outros"]);
   const { toast } = useToast();
+
+  // DnD sensors setup
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
 
   const addItem = (name: string) => {
     const newItem: ShoppingItem = {
@@ -54,6 +81,19 @@ const Index = () => {
       setItems([]);
       toast({
         description: "Lista limpa com sucesso!",
+      });
+    }
+  };
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    
+    if (over && active.id !== over.id) {
+      setItems((items) => {
+        const oldIndex = items.findIndex(item => item.id === active.id);
+        const newIndex = items.findIndex(item => item.id === over.id);
+        
+        return arrayMove(items, oldIndex, newIndex);
       });
     }
   };
@@ -115,21 +155,30 @@ const Index = () => {
               />
               
               <div className="space-y-2 mt-8">
-                {items.length === 0 ? (
+                {filteredItems.length === 0 ? (
                   <p className="text-center text-gray-500">
                     Sua lista está vazia. Adicione alguns itens!
                   </p>
                 ) : (
-                  items
-                    .filter(item => selectedCategory === "other" ? true : item.category === selectedCategory)
-                    .map((item) => (
-                      <ShoppingListItem
-                        key={item.id}
-                        item={item}
-                        onToggle={toggleItem}
-                        onDelete={deleteItem}
-                      />
-                    ))
+                  <DndContext 
+                    sensors={sensors}
+                    collisionDetection={closestCenter}
+                    onDragEnd={handleDragEnd}
+                  >
+                    <SortableContext 
+                      items={filteredItems}
+                      strategy={verticalListSortingStrategy}
+                    >
+                      {filteredItems.map((item) => (
+                        <ShoppingListItem
+                          key={item.id}
+                          item={item}
+                          onToggle={toggleItem}
+                          onDelete={deleteItem}
+                        />
+                      ))}
+                    </SortableContext>
+                  </DndContext>
                 )}
               </div>
 

@@ -2,7 +2,9 @@
 import React from "react";
 import { Checkbox } from "./ui/checkbox";
 import { Button } from "./ui/button";
-import { X } from "lucide-react";
+import { X, GripVertical } from "lucide-react";
+import { useSortable } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 
 export type ItemCategory = "groceries" | "presents" | "other";
 
@@ -20,9 +22,36 @@ interface ShoppingListItemProps {
 }
 
 const ShoppingListItem = ({ item, onToggle, onDelete }: ShoppingListItemProps) => {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging
+  } = useSortable({ id: item.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+    zIndex: isDragging ? 1 : 0,
+  };
+
   return (
-    <div className="flex items-center justify-between p-3 bg-white rounded-2xl shadow-sm border border-gray-100 hover:border-gray-200 transition-colors">
+    <div 
+      ref={setNodeRef}
+      style={style}
+      className="flex items-center justify-between p-2 bg-white rounded-2xl shadow-sm border border-gray-100 hover:border-gray-200 transition-colors"
+    >
       <div className="flex items-center gap-3">
+        <div 
+          {...attributes} 
+          {...listeners} 
+          className="cursor-grab touch-manipulation active:cursor-grabbing p-1"
+        >
+          <GripVertical className="h-4 w-4 text-gray-400" />
+        </div>
         <Checkbox
           checked={item.checked}
           onCheckedChange={() => onToggle(item.id)}
