@@ -1,8 +1,7 @@
-
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useToast } from "@/components/ui/use-toast";
 import { Button } from "@/components/ui/button";
-import { Menu, ShoppingCart } from "lucide-react";
+import { Menu, ShoppingCart, Share2 } from "lucide-react";
 import ShoppingListHeader from "@/components/ShoppingListHeader";
 import ShoppingListItem, { ShoppingItem, ItemCategory } from "@/components/ShoppingListItem";
 import AddItemDialog from "@/components/AddItemDialog";
@@ -23,13 +22,44 @@ import {
   sortableKeyboardCoordinates,
   verticalListSortingStrategy 
 } from "@dnd-kit/sortable";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+
+const LOCAL_STORAGE_KEY = "shoppingListData";
 
 const Index = () => {
   const [items, setItems] = useState<ShoppingItem[]>([]);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<ItemCategory>("groceries");
   const [groups, setGroups] = useState<string[]>(["Mercado", "Presentes", "Outros"]);
+  const [shareDialogOpen, setShareDialogOpen] = useState(false);
+  const [shareableLink, setShareableLink] = useState("");
   const { toast } = useToast();
+
+  // Load data from localStorage on initial render
+  useEffect(() => {
+    const savedData = localStorage.getItem(LOCAL_STORAGE_KEY);
+    if (savedData) {
+      try {
+        const { savedItems, savedGroups } = JSON.parse(savedData);
+        if (savedItems) setItems(savedItems);
+        if (savedGroups) setGroups(savedGroups);
+      } catch (error) {
+        console.error("Error parsing saved data:", error);
+      }
+    }
+  }, []);
+
+  // Save data to localStorage whenever items or groups change
+  useEffect(() => {
+    localStorage.setItem(
+      LOCAL_STORAGE_KEY, 
+      JSON.stringify({ 
+        savedItems: items, 
+        savedGroups: groups 
+      })
+    );
+  }, [items, groups]);
 
   // DnD sensors setup
   const sensors = useSensors(
@@ -98,6 +128,70 @@ const Index = () => {
     }
   };
 
+  const generateShareableLink = () => {
+    // Create a JSON object with the current list data
+    const dataToShare = {
+      items: filteredItems,
+      groups: groups,
+      category: selectedCategory
+    };
+    
+    // Encode the data as a URL-safe string
+    const encodedData = encodeURIComponent(JSON.stringify(dataToShare));
+    
+    // Create a shareable link with the data as a parameter
+    const baseUrl = window.location.origin;
+    const shareableLink = `${baseUrl}?sharedList=${encodedData}`;
+    
+    setShareableLink(shareableLink);
+    setShareDialogOpen(true);
+  };
+
+  const copyToClipboard = () => {
+    navigator.clipboard.writeText(shareableLink);
+    toast({
+      description: "Link copiado para a área de transferência!",
+    });
+    setShareDialogOpen(false);
+  };
+
+  // Check for shared list data in URL when component mounts
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const sharedListParam = urlParams.get('sharedList');
+    
+    if (sharedListParam) {
+      try {
+        const sharedData = JSON.parse(decodeURIComponent(sharedListParam));
+        
+        // Ask user if they want to import the shared list
+        if (window.confirm("Deseja importar esta lista compartilhada?")) {
+          if (sharedData.items) setItems(sharedData.items);
+          if (sharedData.groups) setGroups(sharedData.groups);
+          if (sharedData.category) setSelectedCategory(sharedData.category);
+          
+          // Clean up the URL after importing
+          window.history.replaceState({}, document.title, window.location.pathname);
+          
+          toast({
+            description: "Lista compartilhada importada com sucesso!",
+          });
+        } else {
+          // User declined, clean up the URL
+          window.history.replaceState({}, document.title, window.location.pathname);
+        }
+      } catch (error) {
+        console.error("Error parsing shared list data:", error);
+        toast({
+          variant: "destructive",
+          description: "Erro ao importar lista compartilhada.",
+        });
+        // Clean up the URL even on error
+        window.history.replaceState({}, document.title, window.location.pathname);
+      }
+    }
+  }, [toast]);
+
   const filteredItems = items.filter(item => 
     selectedCategory === "other" ? true : item.category === selectedCategory
   );
@@ -124,6 +218,15 @@ const Index = () => {
                     <Menu className="h-6 w-6" />
                   </Button>
                 </SidebarTrigger>
+                
+                <Button 
+                  variant="outline" 
+                  className="rounded-full"
+                  onClick={generateShareableLink}
+                >
+                  <Share2 className="h-4 w-4 mr-2" />
+                  Compartilhar
+                </Button>
               </div>
 
               <div className="flex flex-col items-center mb-8">
@@ -190,6 +293,30 @@ const Index = () => {
                   setDialogOpen(false);
                 }}
               />
+              
+              {/* Share Dialog */}
+              <Dialog open={shareDialogOpen} onOpenChange={setShareDialogOpen}>
+                <DialogContent className="sm:max-w-md">
+                  <DialogHeader>
+                    <DialogTitle>Compartilhar lista</DialogTitle>
+                  </DialogHeader>
+                  <div className="flex items-center space-x-2 py-4">
+                    <Input
+                      value={shareableLink}
+                      readOnly
+                      className="flex-1"
+                    />
+                    <Button type="submit" onClick={copyToClipboard}>
+                      Copiar
+                    </Button>
+                  </div>
+                  <DialogFooter className="sm:justify-start">
+                    <p className="text-sm text-gray-500">
+                      Compartilhe este link para que outras pessoas possam acessar sua lista.
+                    </p>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
             </div>
           </div>
         </div>

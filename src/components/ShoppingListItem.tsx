@@ -42,7 +42,7 @@ const ShoppingListItem = ({ item, onToggle, onDelete }: ShoppingListItemProps) =
     <div 
       ref={setNodeRef}
       style={style}
-      className="flex items-center justify-between p-2 bg-white rounded-2xl shadow-sm border border-gray-100 hover:border-gray-200 transition-colors"
+      className="flex items-center justify-between p-1.5 bg-white rounded-2xl shadow-sm border border-gray-100 hover:border-gray-200 transition-colors"
     >
       <div className="flex items-center gap-3">
         <div 
@@ -58,7 +58,7 @@ const ShoppingListItem = ({ item, onToggle, onDelete }: ShoppingListItemProps) =
           className="h-4 w-4 rounded-full"
         />
         <div className="flex flex-col gap-0.5">
-          <span className={`text-base ${item.checked ? "line-through text-gray-400" : "text-gray-800"}`}>
+          <span className={`text-sm ${item.checked ? "line-through text-gray-400" : "text-gray-800"}`}>
             {item.name}
           </span>
           <span className="text-[10px] text-gray-500 capitalize">{item.category}</span>
@@ -68,7 +68,7 @@ const ShoppingListItem = ({ item, onToggle, onDelete }: ShoppingListItemProps) =
         variant="ghost" 
         size="icon" 
         onClick={() => onDelete(item.id)}
-        className="rounded-full hover:bg-gray-100 h-8 w-8"
+        className="rounded-full hover:bg-gray-100 h-7 w-7"
       >
         <X className="h-3 w-3" />
       </Button>
