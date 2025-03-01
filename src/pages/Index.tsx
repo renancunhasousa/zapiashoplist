@@ -14,7 +14,8 @@ import {
   PointerSensor, 
   useSensor, 
   useSensors,
-  DragEndEvent 
+  DragEndEvent,
+  TouchSensor
 } from "@dnd-kit/core";
 import { 
   arrayMove,
@@ -24,6 +25,7 @@ import {
 } from "@dnd-kit/sortable";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 const LOCAL_STORAGE_KEY = "shoppingListData";
 
@@ -61,11 +63,19 @@ const Index = () => {
     );
   }, [items, groups]);
 
-  // DnD sensors setup
+  // DnD sensors setup with improved mobile support
+  const isMobile = useIsMobile();
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
-        distance: 8,
+        // Lower distance for mobile
+        distance: isMobile ? 5 : 8,
+      },
+    }),
+    useSensor(TouchSensor, {
+      activationConstraint: {
+        delay: 200,
+        tolerance: 8,
       },
     }),
     useSensor(KeyboardSensor, {

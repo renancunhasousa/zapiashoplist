@@ -5,6 +5,7 @@ import { Button } from "./ui/button";
 import { X, GripVertical } from "lucide-react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 export type ItemCategory = "groceries" | "presents" | "other";
 
@@ -22,6 +23,8 @@ interface ShoppingListItemProps {
 }
 
 const ShoppingListItem = ({ item, onToggle, onDelete }: ShoppingListItemProps) => {
+  const isMobile = useIsMobile();
+  
   const {
     attributes,
     listeners,
@@ -29,7 +32,11 @@ const ShoppingListItem = ({ item, onToggle, onDelete }: ShoppingListItemProps) =
     transform,
     transition,
     isDragging
-  } = useSortable({ id: item.id });
+  } = useSortable({ 
+    id: item.id,
+    // Reduce activation constraint for mobile
+    animateLayoutChanges: () => false
+  });
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -48,7 +55,7 @@ const ShoppingListItem = ({ item, onToggle, onDelete }: ShoppingListItemProps) =
         <div 
           {...attributes} 
           {...listeners} 
-          className="cursor-grab touch-manipulation active:cursor-grabbing p-1"
+          className={`${isMobile ? 'touch-manipulation p-2' : 'cursor-grab touch-manipulation active:cursor-grabbing p-1'}`}
         >
           <GripVertical className="h-4 w-4 text-gray-400" />
         </div>
