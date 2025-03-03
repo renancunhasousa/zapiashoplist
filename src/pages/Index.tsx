@@ -205,8 +205,16 @@ const Index = () => {
   }, [toast]);
 
   const filteredItems = items.filter(item => 
-    selectedCategory === "other" ? true : item.category === selectedCategory
+    item.category === selectedCategory
   );
+
+  // Determine colors for group buttons in alternating pattern
+  const getGroupButtonColor = (index: number, isSelected: boolean) => {
+    if (isSelected) {
+      return "bg-opacity-90 ring-2 ring-white border-2 border-black";
+    }
+    return index % 2 === 0 ? "bg-sky-300 hover:bg-sky-400" : "bg-teal-300 hover:bg-teal-400";
+  };
 
   return (
     <SidebarProvider>
@@ -226,14 +234,14 @@ const Index = () => {
             <div className="max-w-2xl mx-auto">
               <div className="flex justify-between items-center mb-6">
                 <SidebarTrigger>
-                  <Button variant="ghost" size="icon" className="rounded-full">
+                  <Button variant="ghost" size="icon" className="rounded-full shadow-md">
                     <Menu className="h-6 w-6" />
                   </Button>
                 </SidebarTrigger>
                 
                 <Button 
                   variant="outline" 
-                  className="rounded-full"
+                  className="rounded-full shadow-md"
                   onClick={generateShareableLink}
                 >
                   <Share2 className="h-4 w-4 mr-2" />
@@ -242,25 +250,30 @@ const Index = () => {
               </div>
 
               <div className="flex flex-col items-center mb-8">
-                <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mb-4">
-                  <ShoppingCart className="h-8 w-8 text-purple-600" />
+                <div className="mb-4 text-center">
+                  <img 
+                    src="https://lovableproject.com/images/2caeef5e-b37e-4f6e-981c-a35fbffe0d5c" 
+                    alt="ZADA" 
+                    className="h-20 mx-auto"
+                  />
                 </div>
                 
                 <div className="flex gap-2 mb-4">
-                  {groups.map((group) => (
-                    <Button
-                      key={group}
-                      variant={selectedCategory === (group === "Mercado" ? "groceries" : group === "Presentes" ? "presents" : "other") ? "default" : "outline"}
-                      onClick={() => setSelectedCategory(group === "Mercado" ? "groceries" : group === "Presentes" ? "presents" : "other")}
-                      className={`rounded-full shadow-sm ${
-                        group === "Mercado" ? "bg-purple-600 hover:bg-purple-700" :
-                        group === "Presentes" ? "bg-pink-500 hover:bg-pink-600" :
-                        "bg-blue-500 hover:bg-blue-600"
-                      } text-white`}
-                    >
-                      {group}
-                    </Button>
-                  ))}
+                  {groups.map((group, index) => {
+                    const categoryName = group === "Mercado" ? "groceries" : group === "Presentes" ? "presents" : "other";
+                    const isSelected = selectedCategory === categoryName;
+                    
+                    return (
+                      <Button
+                        key={group}
+                        variant="outline"
+                        onClick={() => setSelectedCategory(categoryName)}
+                        className={`rounded-full shadow-md text-black ${getGroupButtonColor(index, isSelected)}`}
+                      >
+                        {group}
+                      </Button>
+                    );
+                  })}
                 </div>
               </div>
 

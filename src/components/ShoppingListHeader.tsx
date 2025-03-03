@@ -1,7 +1,7 @@
 
 import React from "react";
 import { Button } from "./ui/button";
-import { PlusCircle, Trash2, Share2 } from "lucide-react";
+import { Plus, Trash2, Share2 } from "lucide-react";
 
 interface ShoppingListHeaderProps {
   onAddItem: () => void;
@@ -16,11 +16,19 @@ const ShoppingListHeader = ({ onAddItem, onReset }: ShoppingListHeaderProps) => 
         <p className="text-muted-foreground text-center text-sm">Adicione itens à sua lista e compartilhe com outros</p>
       </div>
       <div className="flex gap-2 justify-center">
-        <Button onClick={onAddItem} variant="default" className="gap-2">
-          <PlusCircle className="h-4 w-4" />
-          Novo Item
+        <Button 
+          onClick={onAddItem} 
+          variant="outline" 
+          className="gap-2 rounded-full shadow-md text-black bg-white hover:bg-gray-100"
+        >
+          <Plus className="h-4 w-4" />
+          Novo
         </Button>
-        <Button onClick={onReset} variant="outline" className="gap-2">
+        <Button 
+          onClick={onReset} 
+          variant="outline" 
+          className="gap-2 rounded-full shadow-md text-black bg-white hover:bg-gray-100"
+        >
           <Trash2 className="h-4 w-4" />
           Limpar
         </Button>
