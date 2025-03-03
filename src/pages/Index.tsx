@@ -226,14 +226,14 @@ const Index = () => {
             <div className="max-w-2xl mx-auto">
               <div className="flex justify-between items-center mb-6">
                 <SidebarTrigger>
-                  <Button variant="ghost" size="icon" className="rounded-full">
+                  <Button variant="ghost" size="icon" className="rounded-full shadow-sm">
                     <Menu className="h-6 w-6" />
                   </Button>
                 </SidebarTrigger>
                 
                 <Button 
                   variant="outline" 
-                  className="rounded-full"
+                  className="rounded-full shadow-sm"
                   onClick={generateShareableLink}
                 >
                   <Share2 className="h-4 w-4 mr-2" />
@@ -242,8 +242,24 @@ const Index = () => {
               </div>
 
               <div className="flex flex-col items-center mb-8">
-                <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mb-4">
-                  <ShoppingCart className="h-8 w-8 text-purple-600" />
+                <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mb-4 shadow-md">
+                  <img 
+                    src="https://www.flaticon.com/br/icone-animado-gratis/compras_12147190?term=compras&page=1&position=61&origin=search&related_id=12147190" 
+                    alt="Shopping Icon"
+                    className="h-10 w-10"
+                    onError={(e) => {
+                      // Fallback to the original icon if the URL doesn't work
+                      const target = e.target as HTMLImageElement;
+                      target.onerror = null;
+                      target.style.display = "none";
+                      const parent = target.parentElement;
+                      if (parent) {
+                        const fallbackIcon = document.createElement("span");
+                        fallbackIcon.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-purple-600"><circle cx="8" cy="21" r="1"/><circle cx="19" cy="21" r="1"/><path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"/></svg>`;
+                        parent.appendChild(fallbackIcon);
+                      }
+                    }}
+                  />
                 </div>
                 
                 <div className="flex gap-2 mb-4">
@@ -252,7 +268,7 @@ const Index = () => {
                       key={group}
                       variant={selectedCategory === (group === "Mercado" ? "groceries" : group === "Presentes" ? "presents" : "other") ? "default" : "outline"}
                       onClick={() => setSelectedCategory(group === "Mercado" ? "groceries" : group === "Presentes" ? "presents" : "other")}
-                      className={`rounded-full shadow-sm ${
+                      className={`rounded-full shadow-md ${
                         group === "Mercado" ? "bg-purple-600 hover:bg-purple-700" :
                         group === "Presentes" ? "bg-pink-500 hover:bg-pink-600" :
                         "bg-blue-500 hover:bg-blue-600"
