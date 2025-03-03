@@ -50,7 +50,7 @@ const ShoppingListItem = ({ item, onToggle, onDelete }: ShoppingListItemProps) =
     <div 
       ref={setNodeRef}
       style={style}
-      className="flex items-center justify-between p-1.5 bg-white rounded-2xl shadow-sm border border-gray-100 hover:border-gray-200 transition-colors hover:shadow-md"
+      className="flex items-center justify-between p-1.5 bg-white rounded-2xl shadow-sm border border-gray-100 hover:border-gray-200 transition-colors"
     >
       <div className="flex items-center gap-3">
         <div 

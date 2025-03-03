@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useToast } from "@/components/ui/use-toast";
 import { Button } from "@/components/ui/button";
-import { Menu, Share2 } from "lucide-react";
+import { Menu, ShoppingCart, Share2 } from "lucide-react";
 import ShoppingListHeader from "@/components/ShoppingListHeader";
 import ShoppingListItem, { ShoppingItem, ItemCategory } from "@/components/ShoppingListItem";
 import AddItemDialog from "@/components/AddItemDialog";
@@ -23,7 +23,7 @@ import {
   sortableKeyboardCoordinates,
   verticalListSortingStrategy 
 } from "@dnd-kit/sortable";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { useIsMobile } from "@/hooks/use-mobile";
 
@@ -226,14 +226,14 @@ const Index = () => {
             <div className="max-w-2xl mx-auto">
               <div className="flex justify-between items-center mb-6">
                 <SidebarTrigger>
-                  <Button variant="ghost" size="icon" className="rounded-full shadow-sm">
+                  <Button variant="ghost" size="icon" className="rounded-full">
                     <Menu className="h-6 w-6" />
                   </Button>
                 </SidebarTrigger>
                 
                 <Button 
                   variant="outline" 
-                  className="rounded-full shadow-sm bg-white text-black border-gray-200 hover:bg-gray-50"
+                  className="rounded-full"
                   onClick={generateShareableLink}
                 >
                   <Share2 className="h-4 w-4 mr-2" />
@@ -242,25 +242,21 @@ const Index = () => {
               </div>
 
               <div className="flex flex-col items-center mb-8">
-                <div className="mb-4">
-                  <img 
-                    src="/lovable-uploads/06e35536-32d9-436b-86e7-743b0a39980e.png" 
-                    alt="ZADA Logo"
-                    className="h-16"
-                  />
+                <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mb-4">
+                  <ShoppingCart className="h-8 w-8 text-purple-600" />
                 </div>
                 
                 <div className="flex gap-2 mb-4">
-                  {groups.map((group, index) => (
+                  {groups.map((group) => (
                     <Button
                       key={group}
-                      variant="outline"
+                      variant={selectedCategory === (group === "Mercado" ? "groceries" : group === "Presentes" ? "presents" : "other") ? "default" : "outline"}
                       onClick={() => setSelectedCategory(group === "Mercado" ? "groceries" : group === "Presentes" ? "presents" : "other")}
-                      className={`rounded-full shadow-md border-gray-200 hover:bg-opacity-90 ${
-                        selectedCategory === (group === "Mercado" ? "groceries" : group === "Presentes" ? "presents" : "other") ? "ring-2 ring-gray-300" : ""
-                      } ${
-                        index % 2 === 0 ? "bg-[#D3E4FD] text-black" : "bg-[#39D6C5] text-black"
-                      }`}
+                      className={`rounded-full shadow-sm ${
+                        group === "Mercado" ? "bg-purple-600 hover:bg-purple-700" :
+                        group === "Presentes" ? "bg-pink-500 hover:bg-pink-600" :
+                        "bg-blue-500 hover:bg-blue-600"
+                      } text-white`}
                     >
                       {group}
                     </Button>
@@ -315,9 +311,6 @@ const Index = () => {
                 <DialogContent className="sm:max-w-md">
                   <DialogHeader>
                     <DialogTitle>Compartilhar lista</DialogTitle>
-                    <DialogDescription>
-                      Compartilhe este link para que outras pessoas possam acessar sua lista.
-                    </DialogDescription>
                   </DialogHeader>
                   <div className="flex items-center space-x-2 py-4">
                     <Input
@@ -329,6 +322,11 @@ const Index = () => {
                       Copiar
                     </Button>
                   </div>
+                  <DialogFooter className="sm:justify-start">
+                    <p className="text-sm text-gray-500">
+                      Compartilhe este link para que outras pessoas possam acessar sua lista.
+                    </p>
+                  </DialogFooter>
                 </DialogContent>
               </Dialog>
             </div>
