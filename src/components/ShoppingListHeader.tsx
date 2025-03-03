@@ -12,13 +12,6 @@ const ShoppingListHeader = ({ onAddItem, onReset }: ShoppingListHeaderProps) => 
   return (
     <div className="flex flex-col gap-6 w-full max-w-md mx-auto mb-8">
       <div className="space-y-2">
-        <div className="flex justify-center mb-4">
-          <img 
-            src="/lovable-uploads/06e35536-32d9-436b-86e7-743b0a39980e.png" 
-            alt="ZADA Logo" 
-            className="h-16"
-          />
-        </div>
         <h1 className="text-3xl font-semibold tracking-tight text-center">Lista de Compras</h1>
         <p className="text-muted-foreground text-center text-sm">Adicione itens à sua lista e compartilhe com outros</p>
       </div>

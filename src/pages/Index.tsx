@@ -251,13 +251,15 @@ const Index = () => {
                 </div>
                 
                 <div className="flex gap-2 mb-4">
-                  {groups.map((group) => (
+                  {groups.map((group, index) => (
                     <Button
                       key={group}
                       variant="outline"
                       onClick={() => setSelectedCategory(group === "Mercado" ? "groceries" : group === "Presentes" ? "presents" : "other")}
-                      className={`rounded-full shadow-md bg-white text-black border-gray-200 hover:bg-gray-50 ${
+                      className={`rounded-full shadow-md border-gray-200 hover:bg-opacity-90 ${
                         selectedCategory === (group === "Mercado" ? "groceries" : group === "Presentes" ? "presents" : "other") ? "ring-2 ring-gray-300" : ""
+                      } ${
+                        index % 2 === 0 ? "bg-[#D3E4FD] text-black" : "bg-[#39D6C5] text-black"
                       }`}
                     >
                       {group}
