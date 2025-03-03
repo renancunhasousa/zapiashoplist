@@ -25,8 +25,8 @@ const ShoppingListHeader = ({ onAddItem, onReset }: ShoppingListHeaderProps) => 
       <div className="flex gap-2 justify-center">
         <Button 
           onClick={onAddItem} 
-          variant="default" 
-          className="gap-2 px-4 py-2 rounded-full shadow-md bg-purple-600 hover:bg-purple-700 w-28"
+          variant="outline" 
+          className="gap-2 px-4 py-2 rounded-full shadow-md bg-white text-black border-gray-200 hover:bg-gray-50 w-28"
         >
           <Plus className="h-4 w-4" />
           Novo
@@ -34,7 +34,7 @@ const ShoppingListHeader = ({ onAddItem, onReset }: ShoppingListHeaderProps) => 
         <Button 
           onClick={onReset} 
           variant="outline" 
-          className="gap-2 px-4 py-2 rounded-full shadow-md w-28"
+          className="gap-2 px-4 py-2 rounded-full shadow-md bg-white text-black border-gray-200 hover:bg-gray-50 w-28"
         >
           <Trash2 className="h-4 w-4" />
           Limpar

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useToast } from "@/components/ui/use-toast";
 import { Button } from "@/components/ui/button";
-import { Menu, ShoppingCart, Share2 } from "lucide-react";
+import { Menu, Share2 } from "lucide-react";
 import ShoppingListHeader from "@/components/ShoppingListHeader";
 import ShoppingListItem, { ShoppingItem, ItemCategory } from "@/components/ShoppingListItem";
 import AddItemDialog from "@/components/AddItemDialog";
@@ -23,7 +23,7 @@ import {
   sortableKeyboardCoordinates,
   verticalListSortingStrategy 
 } from "@dnd-kit/sortable";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { useIsMobile } from "@/hooks/use-mobile";
 
@@ -233,7 +233,7 @@ const Index = () => {
                 
                 <Button 
                   variant="outline" 
-                  className="rounded-full shadow-sm"
+                  className="rounded-full shadow-sm bg-white text-black border-gray-200 hover:bg-gray-50"
                   onClick={generateShareableLink}
                 >
                   <Share2 className="h-4 w-4 mr-2" />
@@ -242,23 +242,11 @@ const Index = () => {
               </div>
 
               <div className="flex flex-col items-center mb-8">
-                <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mb-4 shadow-md">
+                <div className="mb-4">
                   <img 
-                    src="https://www.flaticon.com/br/icone-animado-gratis/compras_12147190?term=compras&page=1&position=61&origin=search&related_id=12147190" 
-                    alt="Shopping Icon"
-                    className="h-10 w-10"
-                    onError={(e) => {
-                      // Fallback to the original icon if the URL doesn't work
-                      const target = e.target as HTMLImageElement;
-                      target.onerror = null;
-                      target.style.display = "none";
-                      const parent = target.parentElement;
-                      if (parent) {
-                        const fallbackIcon = document.createElement("span");
-                        fallbackIcon.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-purple-600"><circle cx="8" cy="21" r="1"/><circle cx="19" cy="21" r="1"/><path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"/></svg>`;
-                        parent.appendChild(fallbackIcon);
-                      }
-                    }}
+                    src="/lovable-uploads/06e35536-32d9-436b-86e7-743b0a39980e.png" 
+                    alt="ZADA Logo"
+                    className="h-16"
                   />
                 </div>
                 
@@ -266,13 +254,11 @@ const Index = () => {
                   {groups.map((group) => (
                     <Button
                       key={group}
-                      variant={selectedCategory === (group === "Mercado" ? "groceries" : group === "Presentes" ? "presents" : "other") ? "default" : "outline"}
+                      variant="outline"
                       onClick={() => setSelectedCategory(group === "Mercado" ? "groceries" : group === "Presentes" ? "presents" : "other")}
-                      className={`rounded-full shadow-md ${
-                        group === "Mercado" ? "bg-purple-600 hover:bg-purple-700" :
-                        group === "Presentes" ? "bg-pink-500 hover:bg-pink-600" :
-                        "bg-blue-500 hover:bg-blue-600"
-                      } text-white`}
+                      className={`rounded-full shadow-md bg-white text-black border-gray-200 hover:bg-gray-50 ${
+                        selectedCategory === (group === "Mercado" ? "groceries" : group === "Presentes" ? "presents" : "other") ? "ring-2 ring-gray-300" : ""
+                      }`}
                     >
                       {group}
                     </Button>
@@ -327,6 +313,9 @@ const Index = () => {
                 <DialogContent className="sm:max-w-md">
                   <DialogHeader>
                     <DialogTitle>Compartilhar lista</DialogTitle>
+                    <DialogDescription>
+                      Compartilhe este link para que outras pessoas possam acessar sua lista.
+                    </DialogDescription>
                   </DialogHeader>
                   <div className="flex items-center space-x-2 py-4">
                     <Input
@@ -338,11 +327,6 @@ const Index = () => {
                       Copiar
                     </Button>
                   </div>
-                  <DialogFooter className="sm:justify-start">
-                    <p className="text-sm text-gray-500">
-                      Compartilhe este link para que outras pessoas possam acessar sua lista.
-                    </p>
-                  </DialogFooter>
                 </DialogContent>
               </Dialog>
             </div>
