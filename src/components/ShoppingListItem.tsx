@@ -2,7 +2,7 @@
 import React from "react";
 import { Checkbox } from "./ui/checkbox";
 import { Button } from "./ui/button";
-import { X, GripVertical } from "lucide-react";
+import { X, GripVertical, ExternalLink, DollarSign } from "lucide-react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -14,6 +14,8 @@ export interface ShoppingItem {
   name: string;
   checked: boolean;
   category: ItemCategory;
+  value?: string;
+  link?: string;
 }
 
 interface ShoppingListItemProps {
@@ -34,7 +36,6 @@ const ShoppingListItem = ({ item, onToggle, onDelete }: ShoppingListItemProps) =
     isDragging
   } = useSortable({ 
     id: item.id,
-    // Reduce activation constraint for mobile
     animateLayoutChanges: () => false
   });
 
@@ -68,7 +69,25 @@ const ShoppingListItem = ({ item, onToggle, onDelete }: ShoppingListItemProps) =
           <span className={`text-sm ${item.checked ? "line-through text-gray-400" : "text-gray-800"}`}>
             {item.name}
           </span>
-          <span className="text-[10px] text-gray-500 capitalize">{item.category}</span>
+          <div className="flex items-center gap-2 text-[10px] text-gray-500">
+            {item.value && (
+              <div className="flex items-center gap-0.5">
+                <DollarSign className="h-3 w-3" />
+                <span>{item.value}</span>
+              </div>
+            )}
+            {item.link && (
+              <a 
+                href={item.link.startsWith('http') ? item.link : `https://${item.link}`} 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="flex items-center gap-0.5 text-blue-500 hover:text-blue-700"
+              >
+                <ExternalLink className="h-3 w-3" />
+                <span>Link</span>
+              </a>
+            )}
+          </div>
         </div>
       </div>
       <Button 

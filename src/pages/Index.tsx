@@ -83,12 +83,14 @@ const Index = () => {
     })
   );
 
-  const addItem = (name: string) => {
+  const addItem = (name: string, value?: string, link?: string) => {
     const newItem: ShoppingItem = {
       id: Date.now().toString(),
       name,
       checked: false,
       category: selectedCategory,
+      value,
+      link,
     };
     setItems((prev) => [...prev, newItem]);
     toast({
@@ -298,8 +300,8 @@ const Index = () => {
               <AddItemDialog
                 open={dialogOpen}
                 onOpenChange={setDialogOpen}
-                onAdd={(name) => {
-                  addItem(name);
+                onAdd={(name, value, link) => {
+                  addItem(name, value, link);
                   setDialogOpen(false);
                 }}
               />
