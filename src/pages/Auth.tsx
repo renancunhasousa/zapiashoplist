@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -141,7 +140,7 @@ const Auth = () => {
             className="h-20 mx-auto"
           />
           <h1 className="mt-4 text-2xl font-semibold tracking-tight">
-            Bemvindo a mais um aplicativo Zapia
+            Bem-vindo a mais um aplicativo Zapia
           </h1>
           <p className="text-sm text-gray-500 mt-2">
             Sua lista de compras simplificada
