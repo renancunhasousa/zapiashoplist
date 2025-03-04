@@ -141,7 +141,7 @@ const Auth = () => {
             className="h-20 mx-auto"
           />
           <h1 className="mt-4 text-2xl font-semibold tracking-tight">
-            Bem-vindo ao ZADA
+            Bemvindo a mais um aplicativo Zapia
           </h1>
           <p className="text-sm text-gray-500 mt-2">
             Sua lista de compras simplificada
