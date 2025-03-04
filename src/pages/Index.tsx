@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useToast } from "@/components/ui/use-toast";
 import { Button } from "@/components/ui/button";
-import { Menu, ShoppingCart, Share2 } from "lucide-react";
+import { Menu, Share2 } from "lucide-react";
 import ShoppingListHeader from "@/components/ShoppingListHeader";
 import ShoppingListItem, { ShoppingItem, ItemCategory } from "@/components/ShoppingListItem";
 import AddItemDialog from "@/components/AddItemDialog";
@@ -208,12 +208,12 @@ const Index = () => {
     item.category === selectedCategory
   );
 
-  // Determine colors for group buttons in alternating pattern
+  // Determine colors for group buttons with new specified colors
   const getGroupButtonColor = (index: number, isSelected: boolean) => {
     if (isSelected) {
-      return "bg-opacity-90 ring-2 ring-white border-2 border-black";
+      return "bg-[#f85afa] bg-opacity-90 ring-2 ring-white border-2 border-black";
     }
-    return index % 2 === 0 ? "bg-sky-300 hover:bg-sky-400" : "bg-teal-300 hover:bg-teal-400";
+    return "bg-[#87d3e3] hover:bg-[#87d3e3]/90";
   };
 
   return (
@@ -239,48 +239,51 @@ const Index = () => {
                   </Button>
                 </SidebarTrigger>
                 
-                <Button 
-                  variant="outline" 
-                  className="rounded-full shadow-md"
-                  onClick={generateShareableLink}
-                >
-                  <Share2 className="h-4 w-4 mr-2" />
-                  Compartilhar
-                </Button>
+                <div className="flex items-center gap-2">
+                  <Button 
+                    variant="outline" 
+                    className="rounded-full shadow-md"
+                    onClick={generateShareableLink}
+                  >
+                    <Share2 className="h-4 w-4 mr-2" />
+                    Compartilhar
+                  </Button>
+                  <p className="text-xs text-gray-500 max-w-[150px]">
+                    Compartilhe sua lista com amigos e família
+                  </p>
+                </div>
               </div>
 
-              <div className="flex flex-col items-center mb-8">
-                <div className="mb-4 text-center">
-                  <img 
-                    src="https://lovableproject.com/images/2caeef5e-b37e-4f6e-981c-a35fbffe0d5c" 
-                    alt="ZADA" 
-                    className="h-20 mx-auto"
-                  />
-                </div>
-                
-                <div className="flex gap-2 mb-4">
-                  {groups.map((group, index) => {
-                    const categoryName = group === "Mercado" ? "groceries" : group === "Presentes" ? "presents" : "other";
-                    const isSelected = selectedCategory === categoryName;
-                    
-                    return (
-                      <Button
-                        key={group}
-                        variant="outline"
-                        onClick={() => setSelectedCategory(categoryName)}
-                        className={`rounded-full shadow-md text-black ${getGroupButtonColor(index, isSelected)}`}
-                      >
-                        {group}
-                      </Button>
-                    );
-                  })}
-                </div>
+              <div className="mb-4 text-center">
+                <img 
+                  src="/lovable-uploads/3d145300-d394-4144-bbe2-aee6cffc191e.png" 
+                  alt="ZADA" 
+                  className="h-20 mx-auto"
+                />
               </div>
 
               <ShoppingListHeader 
                 onAddItem={() => setDialogOpen(true)} 
                 onReset={resetList} 
               />
+              
+              <div className="flex gap-2 mb-8 justify-center">
+                {groups.map((group, index) => {
+                  const categoryName = group === "Mercado" ? "groceries" : group === "Presentes" ? "presents" : "other";
+                  const isSelected = selectedCategory === categoryName;
+                  
+                  return (
+                    <Button
+                      key={group}
+                      variant="outline"
+                      onClick={() => setSelectedCategory(categoryName)}
+                      className={`rounded-full shadow-lg text-black ${getGroupButtonColor(index, isSelected)}`}
+                    >
+                      {group}
+                    </Button>
+                  );
+                })}
+              </div>
               
               <div className="space-y-2 mt-8">
                 {filteredItems.length === 0 ? (

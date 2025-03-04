@@ -34,6 +34,12 @@ const GroupManagement = ({ groups, setGroups }: GroupManagementProps) => {
     <div className="p-4 space-y-4">
       <h2 className="text-lg font-semibold mb-4">Gerenciar Grupos</h2>
       
+      <div className="mb-2">
+        <p className="text-sm text-gray-500 mb-2">
+          Crie grupos para organizar diferentes tipos de listas de compras (ex: mercado, farmácia, etc)
+        </p>
+      </div>
+      
       <div className="flex gap-2 mb-4">
         <input
           type="text"
@@ -46,7 +52,7 @@ const GroupManagement = ({ groups, setGroups }: GroupManagementProps) => {
           onClick={addGroup}
           variant="outline"
           size="icon"
-          className="rounded-full"
+          className="rounded-full shadow-md"
         >
           <Plus className="h-4 w-4" />
         </Button>
@@ -60,7 +66,7 @@ const GroupManagement = ({ groups, setGroups }: GroupManagementProps) => {
               onClick={() => deleteGroup(group)}
               variant="ghost"
               size="icon"
-              className="rounded-full opacity-50 hover:opacity-100"
+              className="rounded-full opacity-50 hover:opacity-100 shadow-sm"
             >
               <Trash2 className="h-4 w-4" />
             </Button>
