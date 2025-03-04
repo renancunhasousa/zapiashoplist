@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { useToast } from "@/components/ui/use-toast";
 import { Button } from "@/components/ui/button";
@@ -211,9 +212,9 @@ const Index = () => {
   // Determine colors for group buttons with new specified colors
   const getGroupButtonColor = (index: number, isSelected: boolean) => {
     if (isSelected) {
-      return "bg-[#f85afa] bg-opacity-90 ring-2 ring-white border-2 border-black";
+      return "bg-[#f85afa] bg-opacity-90 ring-2 ring-white text-white";
     }
-    return "bg-[#87d3e3] hover:bg-[#87d3e3]/90";
+    return "bg-[#87d3e3] hover:bg-[#87d3e3]/90 text-white";
   };
 
   return (
@@ -240,6 +241,9 @@ const Index = () => {
                 </SidebarTrigger>
                 
                 <div className="flex items-center gap-2">
+                  <p className="text-xs text-gray-500 max-w-[150px] text-right">
+                    Compartilhe sua lista com amigos e família
+                  </p>
                   <Button 
                     variant="outline" 
                     className="rounded-full shadow-md"
@@ -248,9 +252,6 @@ const Index = () => {
                     <Share2 className="h-4 w-4 mr-2" />
                     Compartilhar
                   </Button>
-                  <p className="text-xs text-gray-500 max-w-[150px]">
-                    Compartilhe sua lista com amigos e família
-                  </p>
                 </div>
               </div>
 
@@ -261,13 +262,8 @@ const Index = () => {
                   className="h-20 mx-auto"
                 />
               </div>
-
-              <ShoppingListHeader 
-                onAddItem={() => setDialogOpen(true)} 
-                onReset={resetList} 
-              />
               
-              <div className="flex gap-2 mb-8 justify-center">
+              <div className="flex gap-2 mb-6 justify-center">
                 {groups.map((group, index) => {
                   const categoryName = group === "Mercado" ? "groceries" : group === "Presentes" ? "presents" : "other";
                   const isSelected = selectedCategory === categoryName;
@@ -277,13 +273,18 @@ const Index = () => {
                       key={group}
                       variant="outline"
                       onClick={() => setSelectedCategory(categoryName)}
-                      className={`rounded-full shadow-lg text-black ${getGroupButtonColor(index, isSelected)}`}
+                      className={`rounded-full shadow-lg ${getGroupButtonColor(index, isSelected)}`}
                     >
                       {group}
                     </Button>
                   );
                 })}
               </div>
+
+              <ShoppingListHeader 
+                onAddItem={() => setDialogOpen(true)} 
+                onReset={resetList} 
+              />
               
               <div className="space-y-2 mt-8">
                 {filteredItems.length === 0 ? (

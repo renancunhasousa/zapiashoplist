@@ -35,8 +35,8 @@ const GroupManagement = ({ groups, setGroups }: GroupManagementProps) => {
       <h2 className="text-lg font-semibold mb-4">Gerenciar Grupos</h2>
       
       <div className="mb-2">
-        <p className="text-sm text-gray-500 mb-2">
-          Crie grupos para organizar diferentes tipos de listas de compras (ex: mercado, farmácia, etc)
+        <p className="text-xs text-gray-500 mb-2">
+          Crie grupos para organizar diferentes tipos de listas de compras (ex: lista de presentes, mercado, etc)
         </p>
       </div>
       
