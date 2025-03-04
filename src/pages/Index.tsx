@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from "react";
 import { useToast } from "@/components/ui/use-toast";
 import { Button } from "@/components/ui/button";
-import { Menu, Share2 } from "lucide-react";
+import { Menu, Share2, LogOut } from "lucide-react";
 import ShoppingListHeader from "@/components/ShoppingListHeader";
 import ShoppingListItem, { ShoppingItem, ItemCategory } from "@/components/ShoppingListItem";
 import AddItemDialog from "@/components/AddItemDialog";
@@ -27,42 +27,103 @@ import {
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { useIsMobile } from "@/hooks/use-mobile";
-
-const LOCAL_STORAGE_KEY = "shoppingListData";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/components/AuthProvider";
 
 const Index = () => {
   const [items, setItems] = useState<ShoppingItem[]>([]);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<ItemCategory>("groceries");
-  const [groups, setGroups] = useState<string[]>(["Mercado", "Presentes", "Outros"]);
+  const [groups, setGroups] = useState<string[]>([]);
   const [shareDialogOpen, setShareDialogOpen] = useState(false);
   const [shareableLink, setShareableLink] = useState("");
   const { toast } = useToast();
+  const { user, signOut } = useAuth();
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Load data from localStorage on initial render
+  // Load data from Supabase on initial render
   useEffect(() => {
-    const savedData = localStorage.getItem(LOCAL_STORAGE_KEY);
-    if (savedData) {
+    const fetchUserData = async () => {
+      if (!user) return;
+      
+      setIsLoading(true);
+      
       try {
-        const { savedItems, savedGroups } = JSON.parse(savedData);
-        if (savedItems) setItems(savedItems);
-        if (savedGroups) setGroups(savedGroups);
+        // Fetch user's groups
+        const { data: groupsData, error: groupsError } = await supabase
+          .from('groups')
+          .select('*')
+          .order('created_at', { ascending: true });
+          
+        if (groupsError) throw groupsError;
+        
+        if (groupsData && groupsData.length > 0) {
+          setGroups(groupsData.map(group => group.name));
+        } else {
+          // Create default groups if user has none
+          const defaultGroups = ["Mercado", "Presentes", "Outros"];
+          for (const groupName of defaultGroups) {
+            await supabase.from('groups').insert({
+              user_id: user.id,
+              name: groupName
+            });
+          }
+          setGroups(defaultGroups);
+        }
+        
+        // Fetch user's items for the selected category
+        await fetchItems(selectedCategory);
+        
       } catch (error) {
-        console.error("Error parsing saved data:", error);
+        console.error("Error fetching data:", error);
+        toast({
+          variant: "destructive",
+          description: "Erro ao carregar seus dados.",
+        });
+      } finally {
+        setIsLoading(false);
       }
-    }
-  }, []);
-
-  // Save data to localStorage whenever items or groups change
+    };
+    
+    fetchUserData();
+  }, [user]);
+  
+  // Fetch items when category changes
   useEffect(() => {
-    localStorage.setItem(
-      LOCAL_STORAGE_KEY, 
-      JSON.stringify({ 
-        savedItems: items, 
-        savedGroups: groups 
-      })
-    );
-  }, [items, groups]);
+    if (user) {
+      fetchItems(selectedCategory);
+    }
+  }, [selectedCategory, user]);
+
+  const fetchItems = async (category: string) => {
+    if (!user) return;
+    
+    try {
+      const { data, error } = await supabase
+        .from('items')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('category', category)
+        .order('position', { ascending: true });
+        
+      if (error) throw error;
+      
+      if (data) {
+        const formattedItems: ShoppingItem[] = data.map(item => ({
+          id: item.id,
+          name: item.name,
+          checked: item.checked,
+          category: item.category as ItemCategory,
+          value: item.value || undefined,
+          link: item.link || undefined,
+        }));
+        
+        setItems(formattedItems);
+      }
+    } catch (error) {
+      console.error("Error fetching items:", error);
+    }
+  };
 
   // DnD sensors setup with improved mobile support
   const isMobile = useIsMobile();
@@ -84,51 +145,162 @@ const Index = () => {
     })
   );
 
-  const addItem = (name: string, value?: string, link?: string) => {
-    const newItem: ShoppingItem = {
-      id: Date.now().toString(),
-      name,
-      checked: false,
-      category: selectedCategory,
-      value,
-      link,
-    };
-    setItems((prev) => [...prev, newItem]);
-    toast({
-      description: "Item adicionado com sucesso!",
-    });
-  };
-
-  const toggleItem = (id: string) => {
-    setItems((prev) => {
-      const updatedItems = prev.map((item) =>
-        item.id === id ? { ...item, checked: !item.checked } : item
-      );
+  const addItem = async (name: string, value?: string, link?: string) => {
+    if (!user) return;
+    
+    try {
+      // Get highest position number to place new item at the end
+      const highestPosition = items.length > 0 
+        ? Math.max(...items.map(item => parseInt(item.id))) + 1 
+        : 0;
       
-      return updatedItems.sort((a, b) => {
-        if (a.checked === b.checked) return 0;
-        return a.checked ? 1 : -1;
-      });
-    });
-  };
-
-  const deleteItem = (id: string) => {
-    setItems((prev) => prev.filter((item) => item.id !== id));
-    toast({
-      description: "Item removido com sucesso!",
-    });
-  };
-
-  const resetList = () => {
-    if (items.length > 0) {
-      setItems([]);
+      const newItem: ShoppingItem = {
+        id: Date.now().toString(),
+        name,
+        checked: false,
+        category: selectedCategory,
+        value,
+        link,
+      };
+      
+      // Add item to Supabase
+      const { data, error } = await supabase
+        .from('items')
+        .insert({
+          user_id: user.id,
+          name: newItem.name,
+          checked: newItem.checked,
+          category: newItem.category,
+          value: newItem.value,
+          link: newItem.link,
+          position: highestPosition
+        })
+        .select();
+        
+      if (error) throw error;
+      
+      if (data && data[0]) {
+        // Update local state with the item returned from Supabase (with proper ID)
+        const dbItem: ShoppingItem = {
+          id: data[0].id,
+          name: data[0].name,
+          checked: data[0].checked,
+          category: data[0].category as ItemCategory,
+          value: data[0].value || undefined,
+          link: data[0].link || undefined,
+        };
+        
+        setItems((prev) => [...prev, dbItem]);
+        
+        toast({
+          description: "Item adicionado com sucesso!",
+        });
+      }
+    } catch (error) {
+      console.error("Error adding item:", error);
       toast({
-        description: "Lista limpa com sucesso!",
+        variant: "destructive",
+        description: "Erro ao adicionar item.",
       });
     }
   };
 
-  const handleDragEnd = (event: DragEndEvent) => {
+  const toggleItem = async (id: string) => {
+    if (!user) return;
+    
+    try {
+      // Find the item to toggle
+      const itemToToggle = items.find(item => item.id === id);
+      if (!itemToToggle) return;
+      
+      // Update in Supabase
+      const { error } = await supabase
+        .from('items')
+        .update({ checked: !itemToToggle.checked })
+        .eq('id', id)
+        .eq('user_id', user.id);
+        
+      if (error) throw error;
+      
+      // Update local state
+      setItems((prev) => {
+        const updatedItems = prev.map((item) =>
+          item.id === id ? { ...item, checked: !item.checked } : item
+        );
+        
+        return updatedItems.sort((a, b) => {
+          if (a.checked === b.checked) return 0;
+          return a.checked ? 1 : -1;
+        });
+      });
+    } catch (error) {
+      console.error("Error toggling item:", error);
+      toast({
+        variant: "destructive",
+        description: "Erro ao atualizar item.",
+      });
+    }
+  };
+
+  const deleteItem = async (id: string) => {
+    if (!user) return;
+    
+    try {
+      // Delete from Supabase
+      const { error } = await supabase
+        .from('items')
+        .delete()
+        .eq('id', id)
+        .eq('user_id', user.id);
+        
+      if (error) throw error;
+      
+      // Update local state
+      setItems((prev) => prev.filter((item) => item.id !== id));
+      
+      toast({
+        description: "Item removido com sucesso!",
+      });
+    } catch (error) {
+      console.error("Error deleting item:", error);
+      toast({
+        variant: "destructive",
+        description: "Erro ao remover item.",
+      });
+    }
+  };
+
+  const resetList = async () => {
+    if (!user || items.length === 0) return;
+    
+    try {
+      // Delete all items in the selected category
+      const { error } = await supabase
+        .from('items')
+        .delete()
+        .eq('user_id', user.id)
+        .eq('category', selectedCategory);
+        
+      if (error) throw error;
+      
+      // Update local state
+      setItems([]);
+      
+      toast({
+        description: "Lista limpa com sucesso!",
+      });
+    } catch (error) {
+      console.error("Error resetting list:", error);
+      toast({
+        variant: "destructive",
+        description: "Erro ao limpar lista.",
+      });
+    }
+  };
+
+  const handleDragEnd = async (event: DragEndEvent) => {
+    if (!user) return;
+    
     const { active, over } = event;
     
     if (over && active.id !== over.id) {
@@ -136,7 +308,27 @@ const Index = () => {
         const oldIndex = items.findIndex(item => item.id === active.id);
         const newIndex = items.findIndex(item => item.id === over.id);
         
-        return arrayMove(items, oldIndex, newIndex);
+        const reorderedItems = arrayMove(items, oldIndex, newIndex);
+        
+        // Update positions in Supabase (in background)
+        const updatePositions = async () => {
+          try {
+            // Update each item's position
+            for (let i = 0; i < reorderedItems.length; i++) {
+              await supabase
+                .from('items')
+                .update({ position: i })
+                .eq('id', reorderedItems[i].id)
+                .eq('user_id', user.id);
+            }
+          } catch (error) {
+            console.error("Error updating positions:", error);
+          }
+        };
+        
+        updatePositions();
+        
+        return reorderedItems;
       });
     }
   };
@@ -173,26 +365,62 @@ const Index = () => {
     const urlParams = new URLSearchParams(window.location.search);
     const sharedListParam = urlParams.get('sharedList');
     
-    if (sharedListParam) {
+    if (sharedListParam && user) {
       try {
         const sharedData = JSON.parse(decodeURIComponent(sharedListParam));
         
         // Ask user if they want to import the shared list
         if (window.confirm("Deseja importar esta lista compartilhada?")) {
-          if (sharedData.items) setItems(sharedData.items);
-          if (sharedData.groups) setGroups(sharedData.groups);
-          if (sharedData.category) setSelectedCategory(sharedData.category);
+          // Import the shared items to user's account
+          const importSharedItems = async () => {
+            if (!sharedData.items || !user) return;
+            
+            try {
+              // First, clear existing items in the category
+              await supabase
+                .from('items')
+                .delete()
+                .eq('user_id', user.id)
+                .eq('category', sharedData.category);
+              
+              // Add the shared items under the user's account
+              const itemsToAdd = sharedData.items.map((item: ShoppingItem, index: number) => ({
+                user_id: user.id,
+                name: item.name,
+                checked: item.checked,
+                category: item.category,
+                value: item.value || null,
+                link: item.link || null,
+                position: index
+              }));
+              
+              if (itemsToAdd.length > 0) {
+                await supabase.from('items').insert(itemsToAdd);
+              }
+              
+              // Update local state
+              if (sharedData.category) setSelectedCategory(sharedData.category);
+              
+              // Fetch the newly imported items
+              fetchItems(sharedData.category);
+              
+              toast({
+                description: "Lista compartilhada importada com sucesso!",
+              });
+            } catch (error) {
+              console.error("Error importing shared items:", error);
+              toast({
+                variant: "destructive",
+                description: "Erro ao importar lista compartilhada.",
+              });
+            }
+          };
           
-          // Clean up the URL after importing
-          window.history.replaceState({}, document.title, window.location.pathname);
-          
-          toast({
-            description: "Lista compartilhada importada com sucesso!",
-          });
-        } else {
-          // User declined, clean up the URL
-          window.history.replaceState({}, document.title, window.location.pathname);
+          importSharedItems();
         }
+        
+        // Clean up the URL after importing
+        window.history.replaceState({}, document.title, window.location.pathname);
       } catch (error) {
         console.error("Error parsing shared list data:", error);
         toast({
@@ -203,7 +431,7 @@ const Index = () => {
         window.history.replaceState({}, document.title, window.location.pathname);
       }
     }
-  }, [toast]);
+  }, [user, toast]);
 
   const filteredItems = items.filter(item => 
     item.category === selectedCategory
@@ -217,6 +445,27 @@ const Index = () => {
     return "bg-[#87d3e3] hover:bg-[#87d3e3]/90 text-white";
   };
 
+  // Handle sign out
+  const handleSignOut = async () => {
+    try {
+      await signOut();
+    } catch (error) {
+      console.error("Error signing out:", error);
+      toast({
+        variant: "destructive",
+        description: "Erro ao sair.",
+      });
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-purple-50">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#f85afa]"></div>
+      </div>
+    );
+  }
+
   return (
     <SidebarProvider>
       <div className="min-h-screen flex w-full bg-gradient-to-br from-blue-50 to-purple-50">
@@ -224,7 +473,20 @@ const Index = () => {
           <SidebarContent>
             <SidebarGroup>
               <SidebarGroupContent>
-                <GroupManagement groups={groups} setGroups={setGroups} />
+                <div className="p-4 flex flex-col h-full">
+                  <GroupManagement groups={groups} setGroups={setGroups} />
+                  
+                  <div className="mt-auto pt-4 border-t border-gray-100">
+                    <Button
+                      variant="outline"
+                      className="w-full gap-2 text-gray-700"
+                      onClick={handleSignOut}
+                    >
+                      <LogOut className="h-4 w-4" />
+                      Sair
+                    </Button>
+                  </div>
+                </div>
               </SidebarGroupContent>
             </SidebarGroup>
           </SidebarContent>

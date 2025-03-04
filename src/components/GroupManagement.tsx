@@ -3,6 +3,8 @@ import React, { useState } from 'react';
 import { Button } from "./ui/button";
 import { Plus, Trash2 } from "lucide-react";
 import { useToast } from "./ui/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "./AuthProvider";
 
 interface GroupManagementProps {
   groups: string[];
@@ -12,22 +14,67 @@ interface GroupManagementProps {
 const GroupManagement = ({ groups, setGroups }: GroupManagementProps) => {
   const { toast } = useToast();
   const [newGroup, setNewGroup] = useState("");
+  const { user } = useAuth();
 
-  const addGroup = () => {
+  const addGroup = async () => {
+    if (!user) return;
+    
     if (newGroup && !groups.includes(newGroup)) {
-      setGroups([...groups, newGroup]);
-      setNewGroup("");
-      toast({
-        description: "Grupo adicionado com sucesso!",
-      });
+      try {
+        // Add to Supabase
+        const { data, error } = await supabase
+          .from('groups')
+          .insert({
+            user_id: user.id,
+            name: newGroup
+          })
+          .select();
+          
+        if (error) throw error;
+        
+        // Update local state
+        setGroups([...groups, newGroup]);
+        setNewGroup("");
+        
+        toast({
+          description: "Grupo adicionado com sucesso!",
+        });
+      } catch (error) {
+        console.error("Error adding group:", error);
+        toast({
+          variant: "destructive",
+          description: "Erro ao adicionar grupo.",
+        });
+      }
     }
   };
 
-  const deleteGroup = (group: string) => {
-    setGroups(groups.filter(g => g !== group));
-    toast({
-      description: "Grupo removido com sucesso!",
-    });
+  const deleteGroup = async (group: string) => {
+    if (!user) return;
+    
+    try {
+      // Delete from Supabase
+      const { error } = await supabase
+        .from('groups')
+        .delete()
+        .eq('user_id', user.id)
+        .eq('name', group);
+        
+      if (error) throw error;
+      
+      // Update local state
+      setGroups(groups.filter(g => g !== group));
+      
+      toast({
+        description: "Grupo removido com sucesso!",
+      });
+    } catch (error) {
+      console.error("Error deleting group:", error);
+      toast({
+        variant: "destructive",
+        description: "Erro ao remover grupo.",
+      });
+    }
   };
 
   return (
@@ -67,6 +114,7 @@ const GroupManagement = ({ groups, setGroups }: GroupManagementProps) => {
               variant="ghost"
               size="icon"
               className="rounded-full opacity-50 hover:opacity-100 shadow-sm"
+              disabled={groups.length <= 1}
             >
               <Trash2 className="h-4 w-4" />
             </Button>
