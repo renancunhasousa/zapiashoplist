@@ -29,6 +29,7 @@ import { Input } from "@/components/ui/input";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/components/AuthProvider";
+import { RealtimeChannel } from "@supabase/supabase-js";
 
 const Index = () => {
   const [items, setItems] = useState<ShoppingItem[]>([]);
@@ -40,6 +41,7 @@ const Index = () => {
   const { toast } = useToast();
   const { user, signOut } = useAuth();
   const [isLoading, setIsLoading] = useState(true);
+  const [realtimeChannel, setRealtimeChannel] = useState<RealtimeChannel | null>(null);
 
   // Load data from Supabase on initial render
   useEffect(() => {
@@ -95,6 +97,81 @@ const Index = () => {
     }
   }, [selectedCategory, user]);
 
+  // Set up realtime subscription
+  useEffect(() => {
+    if (!user) return;
+    
+    // Unsubscribe from previous channel if exists
+    if (realtimeChannel) {
+      supabase.removeChannel(realtimeChannel);
+    }
+    
+    // Create a new realtime channel for the current category
+    const channel = supabase.channel('public:items')
+      .on('postgres_changes', {
+        event: '*', // Listen to all events (INSERT, UPDATE, DELETE)
+        schema: 'public',
+        table: 'items',
+        filter: `category=eq.${selectedCategory}`,
+      }, (payload) => {
+        console.log('Realtime event received:', payload);
+        
+        // Handle different events
+        if (payload.eventType === 'INSERT') {
+          const newItem = payload.new as any;
+          
+          // Convert to ShoppingItem format
+          const shoppingItem: ShoppingItem = {
+            id: newItem.id,
+            name: newItem.name,
+            checked: newItem.checked,
+            category: newItem.category as ItemCategory,
+            value: newItem.value || undefined,
+            link: newItem.link || undefined,
+          };
+          
+          // Check if item already exists to avoid duplicates
+          setItems(current => {
+            if (current.some(item => item.id === shoppingItem.id)) {
+              return current;
+            }
+            return [...current, shoppingItem];
+          });
+        } 
+        else if (payload.eventType === 'UPDATE') {
+          const updatedItem = payload.new as any;
+          
+          setItems(current => 
+            current.map(item => 
+              item.id === updatedItem.id 
+                ? {
+                    ...item,
+                    name: updatedItem.name,
+                    checked: updatedItem.checked,
+                    value: updatedItem.value || undefined,
+                    link: updatedItem.link || undefined,
+                  } 
+                : item
+            )
+          );
+        } 
+        else if (payload.eventType === 'DELETE') {
+          const deletedItemId = payload.old.id;
+          setItems(current => current.filter(item => item.id !== deletedItemId));
+        }
+      })
+      .subscribe();
+    
+    setRealtimeChannel(channel);
+    
+    // Cleanup function to remove the channel subscription
+    return () => {
+      if (channel) {
+        supabase.removeChannel(channel);
+      }
+    };
+  }, [user, selectedCategory]);
+
   const fetchItems = async (category: string) => {
     if (!user) return;
     
@@ -102,7 +179,6 @@ const Index = () => {
       const { data, error } = await supabase
         .from('items')
         .select('*')
-        .eq('user_id', user.id)
         .eq('category', category)
         .order('position', { ascending: true });
         
@@ -179,23 +255,10 @@ const Index = () => {
         
       if (error) throw error;
       
-      if (data && data[0]) {
-        // Update local state with the item returned from Supabase (with proper ID)
-        const dbItem: ShoppingItem = {
-          id: data[0].id,
-          name: data[0].name,
-          checked: data[0].checked,
-          category: data[0].category as ItemCategory,
-          value: data[0].value || undefined,
-          link: data[0].link || undefined,
-        };
-        
-        setItems((prev) => [...prev, dbItem]);
-        
-        toast({
-          description: "Item adicionado com sucesso!",
-        });
-      }
+      // Note: We don't need to update local state here as the realtime subscription will handle it
+      toast({
+        description: "Item adicionado com sucesso!",
+      });
     } catch (error) {
       console.error("Error adding item:", error);
       toast({
@@ -217,22 +280,11 @@ const Index = () => {
       const { error } = await supabase
         .from('items')
         .update({ checked: !itemToToggle.checked })
-        .eq('id', id)
-        .eq('user_id', user.id);
+        .eq('id', id);
         
       if (error) throw error;
       
-      // Update local state
-      setItems((prev) => {
-        const updatedItems = prev.map((item) =>
-          item.id === id ? { ...item, checked: !item.checked } : item
-        );
-        
-        return updatedItems.sort((a, b) => {
-          if (a.checked === b.checked) return 0;
-          return a.checked ? 1 : -1;
-        });
-      });
+      // Note: We don't need to update local state here as the realtime subscription will handle it
     } catch (error) {
       console.error("Error toggling item:", error);
       toast({
@@ -250,14 +302,11 @@ const Index = () => {
       const { error } = await supabase
         .from('items')
         .delete()
-        .eq('id', id)
-        .eq('user_id', user.id);
+        .eq('id', id);
         
       if (error) throw error;
       
-      // Update local state
-      setItems((prev) => prev.filter((item) => item.id !== id));
-      
+      // Note: We don't need to update local state here as the realtime subscription will handle it
       toast({
         description: "Item removido com sucesso!",
       });
@@ -278,14 +327,11 @@ const Index = () => {
       const { error } = await supabase
         .from('items')
         .delete()
-        .eq('user_id', user.id)
         .eq('category', selectedCategory);
         
       if (error) throw error;
       
-      // Update local state
-      setItems([]);
-      
+      // Note: We don't need to update local state here as the realtime subscription will handle it
       toast({
         description: "Lista limpa com sucesso!",
       });
@@ -318,8 +364,7 @@ const Index = () => {
               await supabase
                 .from('items')
                 .update({ position: i })
-                .eq('id', reorderedItems[i].id)
-                .eq('user_id', user.id);
+                .eq('id', reorderedItems[i].id);
             }
           } catch (error) {
             console.error("Error updating positions:", error);
@@ -401,8 +446,7 @@ const Index = () => {
               // Update local state
               if (sharedData.category) setSelectedCategory(sharedData.category);
               
-              // Fetch the newly imported items
-              fetchItems(sharedData.category);
+              // No need to manually fetch the imported items as the realtime subscription will handle it
               
               toast({
                 description: "Lista compartilhada importada com sucesso!",
