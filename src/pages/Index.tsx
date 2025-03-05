@@ -42,9 +42,52 @@ const Index = () => {
   const { user, signOut } = useAuth();
   const [isLoading, setIsLoading] = useState(true);
   const [realtimeChannel, setRealtimeChannel] = useState<RealtimeChannel | null>(null);
+  const [isSharedList, setIsSharedList] = useState(false);
+  const [sharedListData, setSharedListData] = useState<any>(null);
 
-  // Load data from Supabase on initial render
+  // Check for shared list on component mount
   useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const sharedListParam = urlParams.get('sharedList');
+    
+    if (sharedListParam) {
+      try {
+        const parsedData = JSON.parse(decodeURIComponent(sharedListParam));
+        setIsSharedList(true);
+        setSharedListData(parsedData);
+        
+        // Set initial data from shared list
+        if (parsedData.items) {
+          setItems(parsedData.items);
+        }
+        if (parsedData.groups) {
+          setGroups(parsedData.groups);
+        }
+        if (parsedData.category) {
+          setSelectedCategory(parsedData.category);
+        }
+        
+        // Show toast to indicate we're in shared list mode
+        toast({
+          description: "Você está visualizando uma lista compartilhada.",
+        });
+        
+        setIsLoading(false);
+      } catch (error) {
+        console.error("Error parsing shared list data:", error);
+        toast({
+          variant: "destructive",
+          description: "Erro ao carregar lista compartilhada.",
+        });
+      }
+    }
+  }, []);
+
+  // Load data from Supabase on initial render for authenticated users
+  useEffect(() => {
+    // Skip if viewing a shared list
+    if (isSharedList) return;
+    
     const fetchUserData = async () => {
       if (!user) return;
       
@@ -88,81 +131,64 @@ const Index = () => {
     };
     
     fetchUserData();
-  }, [user]);
+  }, [user, isSharedList]);
   
-  // Fetch items when category changes
+  // Fetch items when category changes for authenticated users
   useEffect(() => {
+    // Skip if viewing a shared list
+    if (isSharedList) return;
+    
     if (user) {
       fetchItems(selectedCategory);
     }
-  }, [selectedCategory, user]);
+  }, [selectedCategory, user, isSharedList]);
 
   // Set up realtime subscription
   useEffect(() => {
-    if (!user) return;
-    
     // Unsubscribe from previous channel if exists
     if (realtimeChannel) {
       supabase.removeChannel(realtimeChannel);
     }
     
-    // Create a new realtime channel for the current category
-    const channel = supabase.channel('public:items')
-      .on('postgres_changes', {
-        event: '*', // Listen to all events (INSERT, UPDATE, DELETE)
-        schema: 'public',
-        table: 'items',
-        filter: `category=eq.${selectedCategory}`,
-      }, (payload) => {
-        console.log('Realtime event received:', payload);
-        
-        // Handle different events
-        if (payload.eventType === 'INSERT') {
-          const newItem = payload.new as any;
-          
-          // Convert to ShoppingItem format
-          const shoppingItem: ShoppingItem = {
-            id: newItem.id,
-            name: newItem.name,
-            checked: newItem.checked,
-            category: newItem.category as ItemCategory,
-            value: newItem.value || undefined,
-            link: newItem.link || undefined,
-          };
-          
-          // Check if item already exists to avoid duplicates
-          setItems(current => {
-            if (current.some(item => item.id === shoppingItem.id)) {
-              return current;
-            }
-            return [...current, shoppingItem];
-          });
-        } 
-        else if (payload.eventType === 'UPDATE') {
-          const updatedItem = payload.new as any;
-          
-          setItems(current => 
-            current.map(item => 
-              item.id === updatedItem.id 
-                ? {
-                    ...item,
-                    name: updatedItem.name,
-                    checked: updatedItem.checked,
-                    value: updatedItem.value || undefined,
-                    link: updatedItem.link || undefined,
-                  } 
-                : item
-            )
-          );
-        } 
-        else if (payload.eventType === 'DELETE') {
-          const deletedItemId = payload.old.id;
-          setItems(current => current.filter(item => item.id !== deletedItemId));
-        }
-      })
-      .subscribe();
+    // Determine what to listen for based on whether this is a shared list or not
+    let channel;
     
-    setRealtimeChannel(channel);
+    if (isSharedList && sharedListData) {
+      // For shared lists, listen for changes to all items in the selected category
+      // without user_id filter
+      channel = supabase.channel('public:items:shared')
+        .on('postgres_changes', {
+          event: '*', // Listen to all events (INSERT, UPDATE, DELETE)
+          schema: 'public',
+          table: 'items',
+          filter: `category=eq.${sharedListData.category}`,
+        }, (payload) => {
+          console.log('Shared list realtime event received:', payload);
+          handleRealtimeUpdate(payload);
+        })
+        .subscribe((status) => {
+          console.log('Shared realtime subscription status:', status);
+        });
+    } else if (user) {
+      // For authenticated users, listen for changes to their own items
+      channel = supabase.channel('public:items:auth')
+        .on('postgres_changes', {
+          event: '*', // Listen to all events (INSERT, UPDATE, DELETE)
+          schema: 'public',
+          table: 'items',
+          filter: `category=eq.${selectedCategory}`,
+        }, (payload) => {
+          console.log('Auth user realtime event received:', payload);
+          handleRealtimeUpdate(payload);
+        })
+        .subscribe((status) => {
+          console.log('Auth realtime subscription status:', status);
+        });
+    }
+    
+    if (channel) {
+      setRealtimeChannel(channel);
+    }
     
     // Cleanup function to remove the channel subscription
     return () => {
@@ -170,7 +196,53 @@ const Index = () => {
         supabase.removeChannel(channel);
       }
     };
-  }, [user, selectedCategory]);
+  }, [user, selectedCategory, isSharedList, sharedListData]);
+
+  // Handle realtime updates
+  const handleRealtimeUpdate = (payload: any) => {
+    if (payload.eventType === 'INSERT') {
+      const newItem = payload.new as any;
+      
+      // Convert to ShoppingItem format
+      const shoppingItem: ShoppingItem = {
+        id: newItem.id,
+        name: newItem.name,
+        checked: newItem.checked,
+        category: newItem.category as ItemCategory,
+        value: newItem.value || undefined,
+        link: newItem.link || undefined,
+      };
+      
+      // Check if item already exists to avoid duplicates
+      setItems(current => {
+        if (current.some(item => item.id === shoppingItem.id)) {
+          return current;
+        }
+        return [...current, shoppingItem];
+      });
+    } 
+    else if (payload.eventType === 'UPDATE') {
+      const updatedItem = payload.new as any;
+      
+      setItems(current => 
+        current.map(item => 
+          item.id === updatedItem.id 
+            ? {
+                ...item,
+                name: updatedItem.name,
+                checked: updatedItem.checked,
+                value: updatedItem.value || undefined,
+                link: updatedItem.link || undefined,
+              } 
+            : item
+        )
+      );
+    } 
+    else if (payload.eventType === 'DELETE') {
+      const deletedItemId = payload.old.id;
+      setItems(current => current.filter(item => item.id !== deletedItemId));
+    }
+  };
 
   const fetchItems = async (category: string) => {
     if (!user) return;
@@ -222,19 +294,19 @@ const Index = () => {
   );
 
   const addItem = async (name: string, value?: string, link?: string) => {
-    if (!user) return;
+    if (!user && !isSharedList) return;
     
     try {
       // Get highest position number to place new item at the end
       const highestPosition = items.length > 0 
-        ? Math.max(...items.map(item => parseInt(item.id))) + 1 
+        ? Math.max(...items.map(item => typeof item.id === 'string' ? parseInt(item.id) : 0)) + 1 
         : 0;
       
       const newItem: ShoppingItem = {
         id: Date.now().toString(),
         name,
         checked: false,
-        category: selectedCategory,
+        category: isSharedList ? sharedListData.category : selectedCategory,
         value,
         link,
       };
@@ -243,7 +315,7 @@ const Index = () => {
       const { data, error } = await supabase
         .from('items')
         .insert({
-          user_id: user.id,
+          user_id: user ? user.id : '00000000-0000-0000-0000-000000000000', // Use a default ID for shared lists
           name: newItem.name,
           checked: newItem.checked,
           category: newItem.category,
@@ -255,7 +327,6 @@ const Index = () => {
         
       if (error) throw error;
       
-      // Note: We don't need to update local state here as the realtime subscription will handle it
       toast({
         description: "Item adicionado com sucesso!",
       });
@@ -269,7 +340,7 @@ const Index = () => {
   };
 
   const toggleItem = async (id: string) => {
-    if (!user) return;
+    if (!user && !isSharedList) return;
     
     try {
       // Find the item to toggle
@@ -283,8 +354,6 @@ const Index = () => {
         .eq('id', id);
         
       if (error) throw error;
-      
-      // Note: We don't need to update local state here as the realtime subscription will handle it
     } catch (error) {
       console.error("Error toggling item:", error);
       toast({
@@ -295,7 +364,7 @@ const Index = () => {
   };
 
   const deleteItem = async (id: string) => {
-    if (!user) return;
+    if (!user && !isSharedList) return;
     
     try {
       // Delete from Supabase
@@ -306,7 +375,6 @@ const Index = () => {
         
       if (error) throw error;
       
-      // Note: We don't need to update local state here as the realtime subscription will handle it
       toast({
         description: "Item removido com sucesso!",
       });
@@ -320,18 +388,17 @@ const Index = () => {
   };
 
   const resetList = async () => {
-    if (!user || items.length === 0) return;
+    if ((!user && !isSharedList) || items.length === 0) return;
     
     try {
       // Delete all items in the selected category
       const { error } = await supabase
         .from('items')
         .delete()
-        .eq('category', selectedCategory);
+        .eq('category', isSharedList ? sharedListData.category : selectedCategory);
         
       if (error) throw error;
       
-      // Note: We don't need to update local state here as the realtime subscription will handle it
       toast({
         description: "Lista limpa com sucesso!",
       });
@@ -345,7 +412,7 @@ const Index = () => {
   };
 
   const handleDragEnd = async (event: DragEndEvent) => {
-    if (!user) return;
+    if (!user && !isSharedList) return;
     
     const { active, over } = event;
     
@@ -405,90 +472,6 @@ const Index = () => {
     setShareDialogOpen(false);
   };
 
-  // Check for shared list data in URL when component mounts
-  useEffect(() => {
-    const urlParams = new URLSearchParams(window.location.search);
-    const sharedListParam = urlParams.get('sharedList');
-    
-    if (sharedListParam && user) {
-      try {
-        const sharedData = JSON.parse(decodeURIComponent(sharedListParam));
-        
-        // Ask user if they want to import the shared list
-        if (window.confirm("Deseja importar esta lista compartilhada?")) {
-          // Import the shared items to user's account
-          const importSharedItems = async () => {
-            if (!sharedData.items || !user) return;
-            
-            try {
-              // First, clear existing items in the category
-              await supabase
-                .from('items')
-                .delete()
-                .eq('user_id', user.id)
-                .eq('category', sharedData.category);
-              
-              // Add the shared items under the user's account
-              const itemsToAdd = sharedData.items.map((item: ShoppingItem, index: number) => ({
-                user_id: user.id,
-                name: item.name,
-                checked: item.checked,
-                category: item.category,
-                value: item.value || null,
-                link: item.link || null,
-                position: index
-              }));
-              
-              if (itemsToAdd.length > 0) {
-                await supabase.from('items').insert(itemsToAdd);
-              }
-              
-              // Update local state
-              if (sharedData.category) setSelectedCategory(sharedData.category);
-              
-              // No need to manually fetch the imported items as the realtime subscription will handle it
-              
-              toast({
-                description: "Lista compartilhada importada com sucesso!",
-              });
-            } catch (error) {
-              console.error("Error importing shared items:", error);
-              toast({
-                variant: "destructive",
-                description: "Erro ao importar lista compartilhada.",
-              });
-            }
-          };
-          
-          importSharedItems();
-        }
-        
-        // Clean up the URL after importing
-        window.history.replaceState({}, document.title, window.location.pathname);
-      } catch (error) {
-        console.error("Error parsing shared list data:", error);
-        toast({
-          variant: "destructive",
-          description: "Erro ao importar lista compartilhada.",
-        });
-        // Clean up the URL even on error
-        window.history.replaceState({}, document.title, window.location.pathname);
-      }
-    }
-  }, [user, toast]);
-
-  const filteredItems = items.filter(item => 
-    item.category === selectedCategory
-  );
-
-  // Determine colors for group buttons with new specified colors
-  const getGroupButtonColor = (index: number, isSelected: boolean) => {
-    if (isSelected) {
-      return "bg-[#f85afa] bg-opacity-90 ring-2 ring-white text-white";
-    }
-    return "bg-[#87d3e3] hover:bg-[#87d3e3]/90 text-white";
-  };
-
   // Handle sign out
   const handleSignOut = async () => {
     try {
@@ -502,6 +485,20 @@ const Index = () => {
     }
   };
 
+  const filteredItems = items.filter(item => 
+    isSharedList 
+      ? item.category === sharedListData?.category 
+      : item.category === selectedCategory
+  );
+
+  // Determine colors for group buttons with new specified colors
+  const getGroupButtonColor = (index: number, isSelected: boolean) => {
+    if (isSelected) {
+      return "bg-[#f85afa] bg-opacity-90 ring-2 ring-white text-white";
+    }
+    return "bg-[#87d3e3] hover:bg-[#87d3e3]/90 text-white";
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-purple-50">
@@ -510,6 +507,7 @@ const Index = () => {
     );
   }
 
+  // The rest of the component remains mostly the same
   return (
     <SidebarProvider>
       <div className="min-h-screen flex w-full bg-gradient-to-br from-blue-50 to-purple-50">
@@ -518,17 +516,35 @@ const Index = () => {
             <SidebarGroup>
               <SidebarGroupContent>
                 <div className="p-4 flex flex-col h-full">
-                  <GroupManagement groups={groups} setGroups={setGroups} />
+                  {!isSharedList && (
+                    <GroupManagement groups={groups} setGroups={setGroups} />
+                  )}
                   
                   <div className="mt-auto pt-4 border-t border-gray-100">
-                    <Button
-                      variant="outline"
-                      className="w-full gap-2 text-gray-700"
-                      onClick={handleSignOut}
-                    >
-                      <LogOut className="h-4 w-4" />
-                      Sair
-                    </Button>
+                    {!isSharedList && user && (
+                      <Button
+                        variant="outline"
+                        className="w-full gap-2 text-gray-700"
+                        onClick={handleSignOut}
+                      >
+                        <LogOut className="h-4 w-4" />
+                        Sair
+                      </Button>
+                    )}
+                    
+                    {isSharedList && (
+                      <Button
+                        variant="outline"
+                        className="w-full gap-2 text-gray-700"
+                        onClick={() => {
+                          // Clear URL parameters and reload the page
+                          window.history.replaceState({}, document.title, window.location.pathname);
+                          window.location.reload();
+                        }}
+                      >
+                        Voltar
+                      </Button>
+                    )}
                   </div>
                 </div>
               </SidebarGroupContent>
@@ -572,13 +588,16 @@ const Index = () => {
               <div className="flex gap-2 mb-6 justify-center">
                 {groups.map((group, index) => {
                   const categoryName = group === "Mercado" ? "groceries" : group === "Presentes" ? "presents" : "other";
-                  const isSelected = selectedCategory === categoryName;
+                  const isSelected = isSharedList 
+                    ? sharedListData?.category === categoryName
+                    : selectedCategory === categoryName;
                   
                   return (
                     <Button
                       key={group}
                       variant="outline"
-                      onClick={() => setSelectedCategory(categoryName)}
+                      onClick={() => !isSharedList && setSelectedCategory(categoryName)}
+                      disabled={isSharedList}
                       className={`rounded-full shadow-lg ${getGroupButtonColor(index, isSelected)}`}
                     >
                       {group}
@@ -586,6 +605,14 @@ const Index = () => {
                   );
                 })}
               </div>
+
+              {isSharedList && (
+                <div className="mb-4 p-3 bg-purple-100 rounded-md text-center text-sm">
+                  <p className="font-medium text-purple-800">
+                    Você está visualizando uma lista compartilhada
+                  </p>
+                </div>
+              )}
 
               <ShoppingListHeader 
                 onAddItem={() => setDialogOpen(true)} 
