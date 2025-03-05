@@ -40,7 +40,7 @@ const Auth = () => {
       authListener.subscription.unsubscribe();
     };
   }, [navigate]);
-
+  
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -111,21 +111,39 @@ const Auth = () => {
     try {
       setLoadingOAuth(true);
       
-      const { error } = await supabase.auth.signInWithOAuth({
+      console.log(`Attempting to sign in with ${provider}`);
+      
+      const { data, error } = await supabase.auth.signInWithOAuth({
         provider,
         options: {
-          redirectTo: window.location.origin,
+          redirectTo: `${window.location.origin}/auth`,
         },
       });
 
       if (error) {
+        console.error(`OAuth error with ${provider}:`, error);
         throw error;
       }
+      
+      console.log(`OAuth response for ${provider}:`, data);
+      
+      // If we get here, the OAuth redirect should happen automatically
     } catch (error: any) {
+      console.error(`OAuth error with ${provider}:`, error);
+      
+      let errorMessage = `Erro ao conectar com ${provider}`;
+      
+      if (error.message.includes("provider is not enabled")) {
+        errorMessage = `O provedor ${provider} não está habilitado. Verifique as configurações no Supabase.`;
+      } else {
+        errorMessage = `Erro ao conectar com ${provider}: ${error.message}`;
+      }
+      
       toast({
         variant: "destructive",
-        description: `Erro ao conectar com ${provider}: ${error.message}`,
+        description: errorMessage,
       });
+      
       setLoadingOAuth(false);
     }
   };
