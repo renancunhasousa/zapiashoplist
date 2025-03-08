@@ -113,7 +113,30 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      add_shared_user: {
+        Args: {
+          shared_user_id_param: string
+        }
+        Returns: undefined
+      }
+      get_shared_users: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          shared_user_id: string
+        }[]
+      }
+      get_shared_with_me: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          user_id: string
+        }[]
+      }
+      remove_shared_user: {
+        Args: {
+          shared_user_id_param: string
+        }
+        Returns: undefined
+      }
     }
     Enums: {
       [_ in never]: never

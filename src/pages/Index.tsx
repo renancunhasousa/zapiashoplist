@@ -1,399 +1,172 @@
 
 import React, { useState, useEffect } from "react";
 import { useToast } from "@/components/ui/use-toast";
-import { Button } from "@/components/ui/button";
-import { Menu, Share2, LogOut, Users } from "lucide-react";
-import ShoppingListHeader from "@/components/ShoppingListHeader";
-import ShoppingListItem, { ShoppingItem, ItemCategory } from "@/components/ShoppingListItem";
-import AddItemDialog from "@/components/AddItemDialog";
-import { SidebarProvider, Sidebar, SidebarTrigger, SidebarContent, SidebarGroup, SidebarGroupContent } from "@/components/ui/sidebar";
-import GroupManagement from "@/components/GroupManagement";
-import SharedListsManager from "@/components/SharedListsManager";
-import { 
-  DndContext, 
-  closestCenter, 
-  KeyboardSensor, 
-  PointerSensor, 
-  useSensor, 
-  useSensors,
-  DragEndEvent,
-  TouchSensor
-} from "@dnd-kit/core";
-import { 
-  arrayMove,
-  SortableContext, 
-  sortableKeyboardCoordinates,
-  verticalListSortingStrategy 
-} from "@dnd-kit/sortable";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { useIsMobile } from "@/hooks/use-mobile";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/components/AuthProvider";
-import { RealtimeChannel } from "@supabase/supabase-js";
+import AddItemDialog from "@/components/AddItemDialog";
+import ShoppingListHeader from "@/components/ShoppingListHeader";
+import ShoppingListItem from "@/components/ShoppingListItem";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Button } from "@/components/ui/button";
+import { Settings, User, List, Share2 } from "lucide-react";
+import GroupManagement from "@/components/GroupManagement";
+import SharedListsManager from "@/components/SharedListsManager";
+import SharedListsView from "@/components/SharedListsView";
+import { useSharedLists } from "@/hooks/useSharedLists";
+import { useMobile } from "@/hooks/use-mobile";
+
+interface ShoppingItem {
+  id: string;
+  name: string;
+  checked: boolean;
+  user_id: string;
+  category: string;
+  value?: string;
+  link?: string;
+  position: number;
+}
 
 const Index = () => {
-  const [items, setItems] = useState<ShoppingItem[]>([]);
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [selectedCategory, setSelectedCategory] = useState<ItemCategory>("groceries");
-  const [groups, setGroups] = useState<string[]>([]);
-  const [sharedUsers, setSharedUsers] = useState<string[]>([]);
-  const [activeSharedUser, setActiveSharedUser] = useState<string | null>(null);
-  const [activeView, setActiveView] = useState<'groups' | 'shared'>('groups');
-  const [shareDialogOpen, setShareDialogOpen] = useState(false);
-  const [shareableLink, setShareableLink] = useState("");
+  // App State
+  const { user } = useAuth();
   const { toast } = useToast();
-  const { user, signOut } = useAuth();
+  const isMobile = useMobile();
+  const [items, setItems] = useState<ShoppingItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [realtimeChannel, setRealtimeChannel] = useState<RealtimeChannel | null>(null);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [groups, setGroups] = useState<string[]>([]);
+  const [currentGroup, setCurrentGroup] = useState<string | null>(null);
+  const [currentTab, setCurrentTab] = useState("list");
+  
+  // Shared lists functionality
+  const { 
+    sharedUsers, 
+    setSharedUsers, 
+    activeSharedUser, 
+    handleToggleSharedView 
+  } = useSharedLists();
 
-  // DnD sensors setup with improved mobile support
-  const isMobile = useIsMobile();
-  const sensors = useSensors(
-    useSensor(PointerSensor, {
-      activationConstraint: {
-        // Lower distance for mobile
-        distance: isMobile ? 5 : 8,
-      },
-    }),
-    useSensor(TouchSensor, {
-      activationConstraint: {
-        delay: 200,
-        tolerance: 8,
-      },
-    }),
-    useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
-    })
-  );
-
-  // Carregar dados iniciais do usuário autenticado
+  // Fetch user's groups
   useEffect(() => {
-    if (!user) return;
-    
-    const loadUserData = async () => {
-      setIsLoading(true);
+    const fetchGroups = async () => {
+      if (!user) return;
       
       try {
-        // Carregar grupos do usuário
-        const { data: groupsData, error: groupsError } = await supabase
+        const { data, error } = await supabase
           .from('groups')
-          .select('*')
+          .select('name')
           .eq('user_id', user.id)
-          .order('created_at', { ascending: true });
-          
-        if (groupsError) throw groupsError;
+          .order('name');
         
-        if (groupsData && groupsData.length > 0) {
-          setGroups(groupsData.map(group => group.name));
-        } else {
-          // Criar grupos padrão se o usuário não tiver nenhum
-          const defaultGroups = ["Mercado", "Presentes", "Outros"];
-          for (const groupName of defaultGroups) {
-            await supabase.from('groups').insert({
+        if (error) throw error;
+        
+        const groupNames = data.map(group => group.name);
+        
+        if (groupNames.length === 0) {
+          // Create default group if none exists
+          const { error: insertError } = await supabase
+            .from('groups')
+            .insert({
               user_id: user.id,
-              name: groupName
+              name: 'Lista Principal'
             });
-          }
-          setGroups(defaultGroups);
-        }
-        
-        // Carregar usuários compartilhados
-        const { data: sharedData, error: sharedError } = await supabase
-          .from('shared_access')
-          .select('shared_user_id')
-          .eq('user_id', user.id);
           
-        if (sharedError) throw sharedError;
-        
-        if (sharedData && sharedData.length > 0) {
-          setSharedUsers(sharedData.map(access => access.shared_user_id));
+          if (insertError) throw insertError;
+          
+          setGroups(['Lista Principal']);
+          setCurrentGroup('Lista Principal');
+        } else {
+          setGroups(groupNames);
+          setCurrentGroup(groupNames[0]);
         }
-        
-        // Carregar itens para a categoria selecionada
-        await fetchItems(user.id, selectedCategory);
-        
       } catch (error) {
-        console.error("Erro ao carregar dados:", error);
+        console.error('Error fetching groups:', error);
         toast({
           variant: "destructive",
-          description: "Erro ao carregar seus dados.",
+          description: "Erro ao carregar grupos.",
+        });
+      }
+    };
+
+    fetchGroups();
+  }, [user, toast]);
+
+  // Fetch user's items for current group
+  useEffect(() => {
+    const fetchItems = async () => {
+      if (!user || !currentGroup || activeSharedUser) return;
+      
+      setIsLoading(true);
+      try {
+        const { data, error } = await supabase
+          .from('items')
+          .select('*')
+          .eq('user_id', user.id)
+          .eq('category', currentGroup)
+          .order('position');
+        
+        if (error) throw error;
+        
+        setItems(data || []);
+      } catch (error) {
+        console.error('Error fetching items:', error);
+        toast({
+          variant: "destructive",
+          description: "Erro ao carregar itens.",
         });
       } finally {
         setIsLoading(false);
       }
     };
-    
-    loadUserData();
-  }, [user]);
-  
-  // Atualizar itens quando a categoria ou o usuário ativo muda
-  useEffect(() => {
-    if (!user) return;
-    
-    const userIdToFetch = activeSharedUser || user.id;
-    fetchItems(userIdToFetch, selectedCategory);
-    
-  }, [selectedCategory, activeSharedUser, user]);
 
-  // Configurar canal de tempo real
-  useEffect(() => {
-    if (realtimeChannel) {
-      supabase.removeChannel(realtimeChannel);
-    }
-    
-    if (!user) return;
-    
-    const userIdToListen = activeSharedUser || user.id;
-    
-    const channel = supabase.channel('public:items:changes')
-      .on('postgres_changes', {
-        event: '*', // Escutar todos os eventos (INSERT, UPDATE, DELETE)
-        schema: 'public',
-        table: 'items',
-        filter: `user_id=eq.${userIdToListen}`,
-      }, (payload) => {
-        console.log('Evento de tempo real recebido:', payload);
-        handleRealtimeUpdate(payload);
-      })
-      .subscribe((status) => {
-        console.log('Status da inscrição em tempo real:', status);
-      });
-    
-    setRealtimeChannel(channel);
-    
-    return () => {
-      if (channel) {
-        supabase.removeChannel(channel);
-      }
-    };
-  }, [user, activeSharedUser]);
+    fetchItems();
 
-  // Manipular atualizações em tempo real
-  const handleRealtimeUpdate = (payload: any) => {
-    if (payload.eventType === 'INSERT') {
-      const newItem = payload.new as any;
-      
-      // Verificar se o item é da categoria atual
-      if (newItem.category !== selectedCategory) return;
-      
-      // Converter para formato ShoppingItem
-      const shoppingItem: ShoppingItem = {
-        id: newItem.id,
-        name: newItem.name,
-        checked: newItem.checked,
-        category: newItem.category as ItemCategory,
-        value: newItem.value || undefined,
-        link: newItem.link || undefined,
-      };
-      
-      // Verificar se o item já existe para evitar duplicações
-      setItems(current => {
-        if (current.some(item => item.id === shoppingItem.id)) {
-          return current;
-        }
-        return [...current, shoppingItem];
-      });
-    } 
-    else if (payload.eventType === 'UPDATE') {
-      const updatedItem = payload.new as any;
-      
-      // Verificar se o item é da categoria atual
-      if (updatedItem.category !== selectedCategory) return;
-      
-      setItems(current => 
-        current.map(item => 
-          item.id === updatedItem.id 
-            ? {
-                ...item,
-                name: updatedItem.name,
-                checked: updatedItem.checked,
-                value: updatedItem.value || undefined,
-                link: updatedItem.link || undefined,
-              } 
-            : item
+    // Subscribe to realtime updates
+    if (user && currentGroup && !activeSharedUser) {
+      const channel = supabase
+        .channel('items_channel')
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'items',
+            filter: `user_id=eq.${user.id}` + (currentGroup ? `&category=eq.${currentGroup}` : '')
+          },
+          () => {
+            fetchItems();
+          }
         )
-      );
-    } 
-    else if (payload.eventType === 'DELETE') {
-      const deletedItemId = payload.old.id;
-      setItems(current => current.filter(item => item.id !== deletedItemId));
-    }
-  };
+        .subscribe();
 
-  const fetchItems = async (userId: string, category: string) => {
-    try {
-      const { data, error } = await supabase
-        .from('items')
-        .select('*')
-        .eq('user_id', userId)
-        .eq('category', category)
-        .order('position', { ascending: true });
-        
-      if (error) throw error;
-      
-      if (data) {
-        const formattedItems: ShoppingItem[] = data.map(item => ({
-          id: item.id,
-          name: item.name,
-          checked: item.checked,
-          category: item.category as ItemCategory,
-          value: item.value || undefined,
-          link: item.link || undefined,
-        }));
-        
-        setItems(formattedItems);
-      }
-    } catch (error) {
-      console.error("Erro ao buscar itens:", error);
-      toast({
-        variant: "destructive",
-        description: "Erro ao carregar itens.",
-      });
-    }
-  };
-
-  const toggleSharedView = (userId: string | null) => {
-    setActiveSharedUser(userId);
-    
-    if (userId) {
-      // Buscar grupos do usuário compartilhado
-      const loadSharedGroups = async () => {
-        try {
-          const { data: groupsData, error: groupsError } = await supabase
-            .from('groups')
-            .select('*')
-            .eq('user_id', userId)
-            .order('created_at', { ascending: true });
-            
-          if (groupsError) throw groupsError;
-          
-          if (groupsData && groupsData.length > 0) {
-            setGroups(groupsData.map(group => group.name));
-            
-            // Definir categoria baseada no primeiro grupo
-            const firstGroupCategory = groupsData[0].name === "Mercado" 
-              ? "groceries" 
-              : groupsData[0].name === "Presentes" 
-                ? "presents" 
-                : "other";
-                
-            setSelectedCategory(firstGroupCategory as ItemCategory);
-          }
-        } catch (error) {
-          console.error("Erro ao carregar grupos compartilhados:", error);
-        }
+      return () => {
+        supabase.removeChannel(channel);
       };
-      
-      loadSharedGroups();
-    } else {
-      // Voltar para os próprios grupos do usuário
-      if (user) {
-        const loadUserGroups = async () => {
-          try {
-            const { data: groupsData, error: groupsError } = await supabase
-              .from('groups')
-              .select('*')
-              .eq('user_id', user.id)
-              .order('created_at', { ascending: true });
-              
-            if (groupsError) throw groupsError;
-            
-            if (groupsData && groupsData.length > 0) {
-              setGroups(groupsData.map(group => group.name));
-              setSelectedCategory("groceries");
-            }
-          } catch (error) {
-            console.error("Erro ao carregar grupos do usuário:", error);
-          }
-        };
-        
-        loadUserGroups();
-      }
     }
-  };
+  }, [user, currentGroup, activeSharedUser, toast]);
 
-  const addItem = async (name: string, value?: string, link?: string) => {
-    if (!user) return;
-    
-    // Não permitir adicionar itens em listas compartilhadas
-    if (activeSharedUser) {
-      toast({
-        variant: "destructive",
-        description: "Você não pode adicionar itens em listas compartilhadas.",
-      });
-      return;
-    }
+  const handleToggle = async (id: string) => {
+    if (!user || activeSharedUser) return;
     
     try {
-      // Obter maior número de posição para colocar o novo item no final
-      const highestPosition = items.length > 0 
-        ? Math.max(...items.map(item => typeof item.id === 'string' ? parseInt(item.id) : 0)) + 1 
-        : 0;
-      
-      const newItem: ShoppingItem = {
-        id: Date.now().toString(),
-        name,
-        checked: false,
-        category: selectedCategory,
-        value,
-        link,
-      };
-      
-      // Adicionar item ao Supabase
-      const { data, error } = await supabase
-        .from('items')
-        .insert({
-          user_id: user.id,
-          name: newItem.name,
-          checked: newItem.checked,
-          category: newItem.category,
-          value: newItem.value,
-          link: newItem.link,
-          position: highestPosition
-        })
-        .select();
-        
-      if (error) throw error;
-      
-      toast({
-        description: "Item adicionado com sucesso!",
-      });
-    } catch (error) {
-      console.error("Erro ao adicionar item:", error);
-      toast({
-        variant: "destructive",
-        description: "Erro ao adicionar item.",
-      });
-    }
-  };
+      const itemToUpdate = items.find(item => item.id === id);
+      if (!itemToUpdate) return;
 
-  const toggleItem = async (id: string) => {
-    if (!user) return;
-    
-    // Não permitir alterar itens em listas compartilhadas
-    if (activeSharedUser) {
-      toast({
-        variant: "destructive",
-        description: "Você não pode modificar itens em listas compartilhadas.",
-      });
-      return;
-    }
-    
-    try {
-      // Encontrar o item a ser alternado
-      const itemToToggle = items.find(item => item.id === id);
-      if (!itemToToggle) return;
-      
-      // Atualizar no Supabase
       const { error } = await supabase
         .from('items')
-        .update({ checked: !itemToToggle.checked })
+        .update({ checked: !itemToUpdate.checked })
         .eq('id', id);
-        
+
       if (error) throw error;
+      
+      // Update local state
+      setItems(items.map(item => 
+        item.id === id 
+          ? { ...item, checked: !item.checked } 
+          : item
+      ));
     } catch (error) {
-      console.error("Erro ao alternar item:", error);
+      console.error('Error updating item:', error);
       toast({
         variant: "destructive",
         description: "Erro ao atualizar item.",
@@ -401,32 +174,77 @@ const Index = () => {
     }
   };
 
-  const deleteItem = async (id: string) => {
-    if (!user) return;
-    
-    // Não permitir excluir itens em listas compartilhadas
-    if (activeSharedUser) {
-      toast({
-        variant: "destructive",
-        description: "Você não pode remover itens em listas compartilhadas.",
-      });
-      return;
+  const handleAddItem = () => {
+    if (!activeSharedUser) {
+      setIsDialogOpen(true);
     }
+  };
+
+  const handleDialogClose = (newItem?: Omit<ShoppingItem, 'id' | 'user_id' | 'position'>) => {
+    setIsDialogOpen(false);
+    
+    if (newItem && currentGroup && user) {
+      const addItem = async () => {
+        try {
+          // Find max position
+          const maxPosition = items.reduce(
+            (max, item) => (item.position > max ? item.position : max),
+            0
+          );
+
+          const { data, error } = await supabase
+            .from('items')
+            .insert({
+              name: newItem.name,
+              checked: newItem.checked,
+              category: currentGroup,
+              user_id: user.id,
+              position: maxPosition + 1,
+              value: newItem.value,
+              link: newItem.link
+            })
+            .select();
+
+          if (error) throw error;
+          
+          if (data && data[0]) {
+            setItems([...items, data[0]]);
+            toast({
+              description: "Item adicionado com sucesso!",
+            });
+          }
+        } catch (error) {
+          console.error('Error adding item:', error);
+          toast({
+            variant: "destructive",
+            description: "Erro ao adicionar item.",
+          });
+        }
+      };
+      
+      addItem();
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!user || activeSharedUser) return;
     
     try {
-      // Excluir do Supabase
       const { error } = await supabase
         .from('items')
         .delete()
         .eq('id', id);
-        
+
       if (error) throw error;
+      
+      // Update local state
+      setItems(items.filter(item => item.id !== id));
       
       toast({
         description: "Item removido com sucesso!",
       });
     } catch (error) {
-      console.error("Erro ao excluir item:", error);
+      console.error('Error deleting item:', error);
       toast({
         variant: "destructive",
         description: "Erro ao remover item.",
@@ -434,33 +252,26 @@ const Index = () => {
     }
   };
 
-  const resetList = async () => {
-    if (!user || items.length === 0) return;
-    
-    // Não permitir limpar listas compartilhadas
-    if (activeSharedUser) {
-      toast({
-        variant: "destructive",
-        description: "Você não pode limpar listas compartilhadas.",
-      });
-      return;
-    }
+  const handleReset = async () => {
+    if (!user || !currentGroup || activeSharedUser) return;
     
     try {
-      // Excluir todos os itens na categoria selecionada
       const { error } = await supabase
         .from('items')
         .delete()
         .eq('user_id', user.id)
-        .eq('category', selectedCategory);
-        
+        .eq('category', currentGroup);
+
       if (error) throw error;
+      
+      // Update local state
+      setItems([]);
       
       toast({
         description: "Lista limpa com sucesso!",
       });
     } catch (error) {
-      console.error("Erro ao limpar lista:", error);
+      console.error('Error resetting list:', error);
       toast({
         variant: "destructive",
         description: "Erro ao limpar lista.",
@@ -468,245 +279,144 @@ const Index = () => {
     }
   };
 
-  const handleDragEnd = async (event: DragEndEvent) => {
-    if (!user) return;
-    
-    // Não permitir reordenar itens em listas compartilhadas
-    if (activeSharedUser) {
-      toast({
-        variant: "destructive",
-        description: "Você não pode reordenar itens em listas compartilhadas.",
-      });
-      return;
+  // If the current group is deleted, select the first group
+  useEffect(() => {
+    if (groups.length > 0 && currentGroup && !groups.includes(currentGroup)) {
+      setCurrentGroup(groups[0]);
     }
-    
-    const { active, over } = event;
-    
-    if (over && active.id !== over.id) {
-      setItems((items) => {
-        const oldIndex = items.findIndex(item => item.id === active.id);
-        const newIndex = items.findIndex(item => item.id === over.id);
-        
-        const reorderedItems = arrayMove(items, oldIndex, newIndex);
-        
-        // Atualizar posições no Supabase (em segundo plano)
-        const updatePositions = async () => {
-          try {
-            // Atualizar a posição de cada item
-            for (let i = 0; i < reorderedItems.length; i++) {
-              await supabase
-                .from('items')
-                .update({ position: i })
-                .eq('id', reorderedItems[i].id);
-            }
-          } catch (error) {
-            console.error("Erro ao atualizar posições:", error);
-          }
-        };
-        
-        updatePositions();
-        
-        return reorderedItems;
-      });
-    }
-  };
+  }, [groups, currentGroup]);
 
-  const copyUserIdToClipboard = () => {
-    if (!user) return;
-    
-    navigator.clipboard.writeText(user.id);
-    toast({
-      description: "ID copiado para a área de transferência!",
-    });
-  };
-
-  // Determinar cores para os botões de grupo
-  const getGroupButtonColor = (index: number, isSelected: boolean) => {
-    if (isSelected) {
-      return "bg-[#f85afa] bg-opacity-90 ring-2 ring-white text-white";
-    }
-    return "bg-[#87d3e3] hover:bg-[#87d3e3]/90 text-white";
-  };
-
-  if (isLoading) {
+  // Show shared view if there's an active shared user
+  if (activeSharedUser) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-purple-50">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#f85afa]"></div>
-      </div>
+      <SharedListsView 
+        userId={activeSharedUser}
+        onBack={() => handleToggleSharedView(null)}
+      />
     );
   }
 
   return (
-    <SidebarProvider>
-      <div className="min-h-screen flex w-full bg-gradient-to-br from-blue-50 to-purple-50">
-        <Sidebar className="border-r border-gray-200">
-          <SidebarContent>
-            <SidebarGroup>
-              <SidebarGroupContent>
-                <div className="p-4 flex flex-col h-full">
-                  <div className="flex gap-2 mb-6">
-                    <Button
-                      variant={activeView === 'groups' ? "default" : "outline"}
-                      className="flex-1"
-                      onClick={() => setActiveView('groups')}
-                    >
-                      Grupos
-                    </Button>
-                    <Button
-                      variant={activeView === 'shared' ? "default" : "outline"}
-                      className="flex-1"
-                      onClick={() => setActiveView('shared')}
-                    >
-                      Compartilhados
-                    </Button>
-                  </div>
-                  
-                  {activeView === 'groups' ? (
-                    <GroupManagement 
-                      groups={groups} 
-                      setGroups={setGroups}
-                    />
-                  ) : (
-                    <SharedListsManager 
-                      sharedUsers={sharedUsers}
-                      setSharedUsers={setSharedUsers}
-                      onToggleView={toggleSharedView}
-                      activeSharedUser={activeSharedUser}
-                    />
-                  )}
-                  
-                  <div className="mt-auto pt-4 border-t border-gray-100">
-                    {user && (
-                      <Button
-                        variant="outline"
-                        className="w-full gap-2 text-gray-700"
-                        onClick={signOut}
-                      >
-                        <LogOut className="h-4 w-4" />
-                        Sair
-                      </Button>
-                    )}
-                  </div>
-                </div>
-              </SidebarGroupContent>
-            </SidebarGroup>
-          </SidebarContent>
-        </Sidebar>
-        
-        <div className="flex-1">
-          <div className="py-8 px-4">
-            <div className="max-w-2xl mx-auto">
-              <div className="flex justify-between items-center mb-6">
-                <SidebarTrigger>
-                  <Button variant="ghost" size="icon" className="rounded-full shadow-md">
-                    <Menu className="h-6 w-6" />
-                  </Button>
-                </SidebarTrigger>
-                
-                {activeSharedUser ? (
-                  <div className="flex items-center gap-2">
-                    <p className="text-xs text-gray-500">
-                      Visualizando lista compartilhada
-                    </p>
-                    <Users className="h-4 w-4 text-purple-500" />
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-2">
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      className="rounded-full shadow-md"
-                      onClick={copyUserIdToClipboard}
-                    >
-                      <Share2 className="h-4 w-4 mr-2" />
-                      Copiar meu ID
-                    </Button>
-                  </div>
-                )}
-              </div>
-
-              <div className="mb-4 text-center">
-                <img 
-                  src="/lovable-uploads/3d145300-d394-4144-bbe2-aee6cffc191e.png" 
-                  alt="ZADA" 
-                  className="h-20 mx-auto"
-                />
-              </div>
-              
-              <div className="flex gap-2 mb-6 justify-center">
-                {groups.map((group, index) => {
-                  const categoryName = group === "Mercado" ? "groceries" : group === "Presentes" ? "presents" : "other";
-                  const isSelected = selectedCategory === categoryName;
-                  
-                  return (
-                    <Button
-                      key={group}
-                      variant="outline"
-                      onClick={() => setSelectedCategory(categoryName)}
-                      className={`rounded-full shadow-lg ${getGroupButtonColor(index, isSelected)}`}
-                    >
-                      {group}
-                    </Button>
-                  );
-                })}
-              </div>
-
-              {activeSharedUser && (
-                <div className="mb-4 p-3 bg-purple-100 rounded-md text-center text-sm">
-                  <p className="font-medium text-purple-800">
-                    Você está visualizando uma lista compartilhada (somente leitura)
-                  </p>
-                </div>
-              )}
-
-              <ShoppingListHeader 
-                onAddItem={() => !activeSharedUser && setDialogOpen(true)} 
-                onReset={resetList}
-                disabled={Boolean(activeSharedUser)}
-              />
-              
-              <div className="space-y-2 mt-8">
-                {items.length === 0 ? (
-                  <p className="text-center text-gray-500">
-                    Esta lista está vazia.
-                  </p>
-                ) : (
-                  <DndContext 
-                    sensors={sensors}
-                    collisionDetection={closestCenter}
-                    onDragEnd={handleDragEnd}
-                  >
-                    <SortableContext 
-                      items={items}
-                      strategy={verticalListSortingStrategy}
-                    >
-                      {items.map((item) => (
-                        <ShoppingListItem
-                          key={item.id}
-                          item={item}
-                          onToggle={toggleItem}
-                          onDelete={deleteItem}
-                          disabled={Boolean(activeSharedUser)}
-                        />
-                      ))}
-                    </SortableContext>
-                  </DndContext>
-                )}
-              </div>
-
-              <AddItemDialog
-                open={dialogOpen}
-                onOpenChange={setDialogOpen}
-                onAdd={(name, value, link) => {
-                  addItem(name, value, link);
-                  setDialogOpen(false);
-                }}
-              />
-            </div>
-          </div>
+    <div className="container mx-auto max-w-2xl p-4">
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="text-2xl font-bold">Lista de Compras</h1>
+        <div className="flex gap-2">
+          <Button variant="ghost" size="icon" onClick={() => setCurrentTab('profile')}>
+            <User className="h-5 w-5" />
+          </Button>
         </div>
       </div>
-    </SidebarProvider>
+
+      <Tabs 
+        defaultValue="list" 
+        value={currentTab} 
+        onValueChange={setCurrentTab}
+        className="space-y-4"
+      >
+        <TabsList className="grid grid-cols-3 w-full">
+          <TabsTrigger value="list" className="flex items-center gap-2">
+            <List className="h-4 w-4" />
+            <span className={isMobile ? "hidden" : ""}>Lista</span>
+          </TabsTrigger>
+          <TabsTrigger value="groups" className="flex items-center gap-2">
+            <Settings className="h-4 w-4" />
+            <span className={isMobile ? "hidden" : ""}>Grupos</span>
+          </TabsTrigger>
+          <TabsTrigger value="shared" className="flex items-center gap-2">
+            <Share2 className="h-4 w-4" />
+            <span className={isMobile ? "hidden" : ""}>Compartilhar</span>
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="list" className="space-y-4">
+          {/* Group tabs */}
+          <div className="flex overflow-x-auto pb-2 gap-2">
+            {groups.map((group) => (
+              <Button
+                key={group}
+                variant={currentGroup === group ? "default" : "outline"}
+                className="whitespace-nowrap"
+                onClick={() => setCurrentGroup(group)}
+              >
+                {group}
+              </Button>
+            ))}
+          </div>
+
+          {/* Items list */}
+          <div className="space-y-4 mb-24">
+            <ShoppingListHeader
+              onAddItem={handleAddItem}
+              onReset={handleReset}
+              disabled={false}
+            />
+
+            {isLoading ? (
+              <div className="flex justify-center py-8">
+                <p>Carregando...</p>
+              </div>
+            ) : items.length === 0 ? (
+              <div className="text-center py-8 text-gray-500">
+                <p>Nenhum item na lista</p>
+                <p className="text-sm mt-2">Clique em + para adicionar</p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {items.map((item) => (
+                  <ShoppingListItem
+                    key={item.id}
+                    item={item}
+                    onToggle={handleToggle}
+                    onDelete={handleDelete}
+                    disabled={false}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        </TabsContent>
+
+        <TabsContent value="groups">
+          <GroupManagement 
+            groups={groups} 
+            setGroups={setGroups} 
+          />
+        </TabsContent>
+        
+        <TabsContent value="shared">
+          <SharedListsManager 
+            sharedUsers={sharedUsers}
+            setSharedUsers={setSharedUsers}
+            onToggleView={handleToggleSharedView}
+            activeSharedUser={activeSharedUser}
+          />
+        </TabsContent>
+
+        <TabsContent value="profile">
+          <div className="p-4 space-y-4">
+            <h2 className="text-lg font-semibold">Perfil</h2>
+            {user && (
+              <div className="space-y-4">
+                <p>Email: {user.email}</p>
+                <Button 
+                  variant="outline" 
+                  onClick={async () => {
+                    await supabase.auth.signOut();
+                  }}
+                >
+                  Sair
+                </Button>
+              </div>
+            )}
+          </div>
+        </TabsContent>
+      </Tabs>
+
+      <AddItemDialog 
+        open={isDialogOpen} 
+        onClose={handleDialogClose} 
+      />
+    </div>
   );
 };
 
