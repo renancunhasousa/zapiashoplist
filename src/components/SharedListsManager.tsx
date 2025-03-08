@@ -53,12 +53,9 @@ const SharedListsManager = ({
         }
         
         // Adicionar à lista de compartilhamentos do usuário
-        const { error } = await supabase
-          .from('shared_access')
-          .insert({
-            user_id: user.id,
-            shared_user_id: newSharedUserId
-          });
+        const { error } = await supabase.rpc('add_shared_user', {
+          shared_user_id_param: newSharedUserId
+        });
           
         if (error) throw error;
         
@@ -84,11 +81,9 @@ const SharedListsManager = ({
     
     try {
       // Remover do Supabase
-      const { error } = await supabase
-        .from('shared_access')
-        .delete()
-        .eq('user_id', user.id)
-        .eq('shared_user_id', sharedUserId);
+      const { error } = await supabase.rpc('remove_shared_user', {
+        shared_user_id_param: sharedUserId
+      });
         
       if (error) throw error;
       

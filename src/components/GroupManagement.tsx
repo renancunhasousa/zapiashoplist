@@ -5,19 +5,21 @@ import { Plus, Trash2 } from "lucide-react";
 import { useToast } from "./ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "./AuthProvider";
+import { Input } from "./ui/input";
 
 interface GroupManagementProps {
   groups: string[];
   setGroups: React.Dispatch<React.SetStateAction<string[]>>;
+  disabled?: boolean;
 }
 
-const GroupManagement = ({ groups, setGroups }: GroupManagementProps) => {
+const GroupManagement = ({ groups, setGroups, disabled = false }: GroupManagementProps) => {
   const { toast } = useToast();
   const [newGroup, setNewGroup] = useState("");
   const { user } = useAuth();
 
   const addGroup = async () => {
-    if (!user) return;
+    if (!user || disabled) return;
     
     if (newGroup && !groups.includes(newGroup)) {
       try {
@@ -50,7 +52,7 @@ const GroupManagement = ({ groups, setGroups }: GroupManagementProps) => {
   };
 
   const deleteGroup = async (group: string) => {
-    if (!user) return;
+    if (!user || disabled) return;
     
     try {
       // Delete from Supabase
@@ -73,7 +75,7 @@ const GroupManagement = ({ groups, setGroups }: GroupManagementProps) => {
       toast({
         variant: "destructive",
         description: "Erro ao remover grupo.",
-      });
+        });
     }
   };
 
@@ -88,18 +90,20 @@ const GroupManagement = ({ groups, setGroups }: GroupManagementProps) => {
       </div>
       
       <div className="flex gap-2 mb-4">
-        <input
+        <Input
           type="text"
           value={newGroup}
           onChange={(e) => setNewGroup(e.target.value)}
           placeholder="Nome do novo grupo"
-          className="flex-1 px-3 py-2 rounded-full border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="flex-1"
+          disabled={disabled}
         />
         <Button
           onClick={addGroup}
           variant="outline"
           size="icon"
           className="rounded-full shadow-md"
+          disabled={disabled}
         >
           <Plus className="h-4 w-4" />
         </Button>
@@ -114,7 +118,7 @@ const GroupManagement = ({ groups, setGroups }: GroupManagementProps) => {
               variant="ghost"
               size="icon"
               className="rounded-full opacity-50 hover:opacity-100 shadow-sm"
-              disabled={groups.length <= 1}
+              disabled={disabled || groups.length <= 1}
             >
               <Trash2 className="h-4 w-4" />
             </Button>
