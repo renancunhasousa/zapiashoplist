@@ -10,7 +10,6 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { ItemCategory } from "./ShoppingListItem";
 
 interface AddItemDialogProps {
   open: boolean;
@@ -30,6 +29,7 @@ const AddItemDialog = ({ open, onOpenChange, onAdd }: AddItemDialogProps) => {
       setItemName("");
       setItemValue("");
       setItemLink("");
+      onOpenChange(false);
     }
   };
 

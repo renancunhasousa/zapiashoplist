@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { useToast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -13,7 +12,7 @@ import GroupManagement from "@/components/GroupManagement";
 import SharedListsManager from "@/components/SharedListsManager";
 import SharedListsView from "@/components/SharedListsView";
 import { useSharedLists } from "@/hooks/useSharedLists";
-import { useMobile } from "@/hooks/use-mobile";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 interface ShoppingItem {
   id: string;
@@ -30,7 +29,7 @@ const Index = () => {
   // App State
   const { user } = useAuth();
   const { toast } = useToast();
-  const isMobile = useMobile();
+  const isMobile = useIsMobile();
   const [items, setItems] = useState<ShoppingItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -180,10 +179,10 @@ const Index = () => {
     }
   };
 
-  const handleDialogClose = (newItem?: Omit<ShoppingItem, 'id' | 'user_id' | 'position'>) => {
+  const handleDialogClose = (name: string, value?: string, link?: string) => {
     setIsDialogOpen(false);
     
-    if (newItem && currentGroup && user) {
+    if (name && currentGroup && user) {
       const addItem = async () => {
         try {
           // Find max position
@@ -195,13 +194,13 @@ const Index = () => {
           const { data, error } = await supabase
             .from('items')
             .insert({
-              name: newItem.name,
-              checked: newItem.checked,
+              name: name,
+              checked: false,
               category: currentGroup,
               user_id: user.id,
               position: maxPosition + 1,
-              value: newItem.value,
-              link: newItem.link
+              value: value,
+              link: link
             })
             .select();
 
@@ -414,7 +413,8 @@ const Index = () => {
 
       <AddItemDialog 
         open={isDialogOpen} 
-        onClose={handleDialogClose} 
+        onOpenChange={setIsDialogOpen}
+        onAdd={handleDialogClose} 
       />
     </div>
   );

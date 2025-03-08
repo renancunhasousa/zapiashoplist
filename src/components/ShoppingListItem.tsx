@@ -7,7 +7,7 @@ import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { useIsMobile } from "@/hooks/use-mobile";
 
-export type ItemCategory = "groceries" | "presents" | "other";
+export type ItemCategory = string;
 
 export interface ShoppingItem {
   id: string;
@@ -22,9 +22,10 @@ interface ShoppingListItemProps {
   item: ShoppingItem;
   onToggle: (id: string) => void;
   onDelete: (id: string) => void;
+  disabled?: boolean;
 }
 
-const ShoppingListItem = ({ item, onToggle, onDelete }: ShoppingListItemProps) => {
+const ShoppingListItem = ({ item, onToggle, onDelete, disabled = false }: ShoppingListItemProps) => {
   const isMobile = useIsMobile();
   
   const {
@@ -62,8 +63,9 @@ const ShoppingListItem = ({ item, onToggle, onDelete }: ShoppingListItemProps) =
         </div>
         <Checkbox
           checked={item.checked}
-          onCheckedChange={() => onToggle(item.id)}
+          onCheckedChange={() => !disabled && onToggle(item.id)}
           className="h-4 w-4 rounded-full"
+          disabled={disabled}
         />
         <div className="flex flex-col gap-0.5">
           <span className={`text-sm ${item.checked ? "line-through text-gray-400" : "text-gray-800"}`}>
@@ -93,8 +95,9 @@ const ShoppingListItem = ({ item, onToggle, onDelete }: ShoppingListItemProps) =
       <Button 
         variant="ghost" 
         size="icon" 
-        onClick={() => onDelete(item.id)}
+        onClick={() => !disabled && onDelete(item.id)}
         className="rounded-full hover:bg-gray-100 h-7 w-7 shadow-sm"
+        disabled={disabled}
       >
         <X className="h-3 w-3" />
       </Button>
