@@ -37,27 +37,17 @@ const SharedListsManager = ({
       }
 
       try {
-        // Verificar se o usuário existe
-        const { data: userData, error: userError } = await supabase
-          .from('profiles')
-          .select('id')
-          .eq('id', newSharedUserId)
-          .single();
-          
-        if (userError || !userData) {
-          toast({
-            variant: "destructive",
-            description: "ID de usuário não encontrado.",
-          });
-          return;
-        }
-        
-        // Adicionar à lista de compartilhamentos do usuário
+        // Adicionar à lista de compartilhamentos do usuário diretamente
+        // Não verificamos mais se o usuário existe na tabela de profiles
+        // já que isso pode causar problemas se o usuário existe mas não tem perfil
         const { error } = await supabase.rpc('add_shared_user', {
           shared_user_id_param: newSharedUserId
         });
           
-        if (error) throw error;
+        if (error) {
+          console.error("Erro ao adicionar acesso compartilhado:", error);
+          throw error;
+        }
         
         // Atualizar estado local
         setSharedUsers([...sharedUsers, newSharedUserId]);
@@ -70,7 +60,7 @@ const SharedListsManager = ({
         console.error("Erro ao adicionar acesso compartilhado:", error);
         toast({
           variant: "destructive",
-          description: "Erro ao adicionar acesso compartilhado.",
+          description: "Erro ao adicionar acesso compartilhado. Verifique se o ID é válido.",
         });
       }
     }
