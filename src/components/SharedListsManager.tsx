@@ -22,10 +22,29 @@ const SharedListsManager = ({
 }: SharedListsManagerProps) => {
   const { toast } = useToast();
   const [newSharedUserId, setNewSharedUserId] = useState("");
+  const [isAddingUser, setIsAddingUser] = useState(false);
   const { user } = useAuth();
 
   const addSharedUser = async () => {
     if (!user) return;
+    
+    if (!newSharedUserId || newSharedUserId.trim() === '') {
+      toast({
+        variant: "destructive",
+        description: "Por favor, insira um ID de usuário válido.",
+      });
+      return;
+    }
+    
+    // Verificar se o ID é um UUID válido
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!uuidRegex.test(newSharedUserId)) {
+      toast({
+        variant: "destructive",
+        description: "ID inválido. O ID deve estar no formato UUID.",
+      });
+      return;
+    }
     
     if (newSharedUserId && !sharedUsers.includes(newSharedUserId)) {
       if (newSharedUserId === user.id) {
@@ -36,6 +55,8 @@ const SharedListsManager = ({
         return;
       }
 
+      setIsAddingUser(true);
+      
       try {
         // Adicionar à lista de compartilhamentos do usuário diretamente
         // Não verificamos mais se o usuário existe na tabela de profiles
@@ -62,7 +83,14 @@ const SharedListsManager = ({
           variant: "destructive",
           description: "Erro ao adicionar acesso compartilhado. Verifique se o ID é válido.",
         });
+      } finally {
+        setIsAddingUser(false);
       }
+    } else if (sharedUsers.includes(newSharedUserId)) {
+      toast({
+        variant: "destructive",
+        description: "Este ID já foi adicionado à sua lista.",
+      });
     }
   };
 
@@ -119,6 +147,7 @@ const SharedListsManager = ({
           variant="outline"
           size="icon"
           className="rounded-full shadow-md"
+          disabled={isAddingUser}
         >
           <Plus className="h-4 w-4" />
         </Button>
